@@ -13,7 +13,8 @@ use InvalidArgumentException;
  *
  * The store exposes two planes:
  * - Raw data (`products`, `productVariations`) populated by the `load_*`
- *   methods below, each keyed by ID.
+ *   methods below, each keyed by ID. The same raw data is also written to the
+ *   `woocommerce` namespace; the selection and the getters are not.
  * - Selection (`productId`, `variationId`) — set by callers via
  *   `wp_interactivity_state` (global) or `data-wp-context` (per-element) —
  *   plus the derived getters (`mainProductInContext`,
@@ -45,6 +46,14 @@ class ProductsStore {
 	 * @var string
 	 */
 	private static string $store_namespace = 'woocommerce/products';
+
+	/**
+	 * The general namespace that also receives the raw data, so bindings on
+	 * `woocommerce` product state resolve during server-side rendering.
+	 *
+	 * @var string
+	 */
+	private static string $shared_namespace = 'woocommerce';
 
 	/**
 	 * Products that have been loaded into state.
@@ -170,6 +179,19 @@ class ProductsStore {
 	}
 
 	/**
+	 * Write raw product data, without images, to the `woocommerce/products` and `woocommerce` state.
+	 *
+	 * @param string $key      The state key (`products` or `productVariations`).
+	 * @param array  $products Products or variations keyed by ID.
+	 * @return void
+	 */
+	private static function seed_state( string $key, array $products ): void {
+		$data = array( $key => self::remove_images( $products ) );
+		wp_interactivity_state( self::$store_namespace, $data );
+		wp_interactivity_state( self::$shared_namespace, $data );
+	}
+
+	/**
 	 * Load a product into state.
 	 *
 	 * @param string $consent_statement The consent statement string.
@@ -189,10 +211,7 @@ class ProductsStore {
 
 		self::$products[ $product_id ] = $response['body'] ?? array();
 		self::register_getters();
-		wp_interactivity_state(
-			self::$store_namespace,
-			array( 'products' => self::remove_images( array( $product_id => self::$products[ $product_id ] ) ) )
-		);
+		self::seed_state( 'products', array( $product_id => self::$products[ $product_id ] ) );
 
 		return self::$products[ $product_id ];
 	}
@@ -246,10 +265,7 @@ class ProductsStore {
 		$keyed_products = array_column( $purchasable_products, null, 'id' );
 		self::$products = array_replace( self::$products, $keyed_products );
 		self::register_getters();
-		wp_interactivity_state(
-			self::$store_namespace,
-			array( 'products' => self::remove_images( $keyed_products ) )
-		);
+		self::seed_state( 'products', $keyed_products );
 
 		return $keyed_products;
 	}
@@ -286,10 +302,7 @@ class ProductsStore {
 		$keyed_variations         = array_column( $response['body'], null, 'id' );
 		self::$product_variations = array_replace( self::$product_variations, $keyed_variations );
 		self::register_getters();
-		wp_interactivity_state(
-			self::$store_namespace,
-			array( 'productVariations' => self::remove_images( $keyed_variations ) )
-		);
+		self::seed_state( 'productVariations', $keyed_variations );
 
 		return $keyed_variations;
 	}
