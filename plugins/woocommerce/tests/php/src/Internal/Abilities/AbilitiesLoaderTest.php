@@ -64,6 +64,9 @@ class AbilitiesLoaderTest extends \WC_Unit_Test_Case {
 		'woocommerce/shipping-zone-method-create',
 		'woocommerce/shipping-zone-method-update',
 		'woocommerce/tax-rates-query',
+		'woocommerce/tax-rate-create',
+		'woocommerce/tax-rate-update',
+		'woocommerce/tax-rate-delete',
 		'woocommerce/system-status-tools-query',
 		'woocommerce/system-status-tool-run',
 		'woocommerce/payment-gateway-update',
@@ -278,6 +281,21 @@ class AbilitiesLoaderTest extends \WC_Unit_Test_Case {
 				'readonly'    => true,
 				'idempotent'  => true,
 				'destructive' => false,
+			),
+			'woocommerce/tax-rate-create'             => array(
+				'readonly'    => false,
+				'idempotent'  => false,
+				'destructive' => false,
+			),
+			'woocommerce/tax-rate-update'             => array(
+				'readonly'    => false,
+				'idempotent'  => true,
+				'destructive' => false,
+			),
+			'woocommerce/tax-rate-delete'             => array(
+				'readonly'    => false,
+				'idempotent'  => true,
+				'destructive' => true,
 			),
 			'woocommerce/product-attributes-query'    => array(
 				'readonly'    => true,
@@ -1208,6 +1226,21 @@ class AbilitiesLoaderTest extends \WC_Unit_Test_Case {
 				'woocommerce/tax-rates-query',
 				array(),
 			),
+			'tax-rate-create'             => array(
+				'woocommerce/tax-rate-create',
+				array( 'rate' => '19' ),
+			),
+			'tax-rate-update'             => array(
+				'woocommerce/tax-rate-update',
+				array(
+					'id'   => 1,
+					'rate' => '19',
+				),
+			),
+			'tax-rate-delete'             => array(
+				'woocommerce/tax-rate-delete',
+				array( 'id' => 1 ),
+			),
 			'status-tools-query'          => array(
 				'woocommerce/system-status-tools-query',
 				array(),
@@ -1272,6 +1305,9 @@ class AbilitiesLoaderTest extends \WC_Unit_Test_Case {
 				),
 			),
 			'tax-rates-query'                => array( 'woocommerce/tax-rates-query', array() ),
+			'tax-rate-create'                => array( 'woocommerce/tax-rate-create', array( 'rate' => '19' ) ),
+			'tax-rate-update of missing'     => array( 'woocommerce/tax-rate-update', $missing_id ),
+			'tax-rate-delete of missing'     => array( 'woocommerce/tax-rate-delete', $missing_id ),
 			'product-attributes-query'       => array( 'woocommerce/product-attributes-query', array() ),
 			'product-attribute-create'       => array( 'woocommerce/product-attribute-create', array( 'name' => 'Size' ) ),
 			'product-terms-query'            => array( 'woocommerce/product-terms-query', array( 'taxonomy' => 'product_cat' ) ),
