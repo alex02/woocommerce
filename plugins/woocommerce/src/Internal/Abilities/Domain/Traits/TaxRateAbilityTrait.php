@@ -165,7 +165,7 @@ trait TaxRateAbilityTrait {
 			'priority'  => array(
 				'type'        => 'integer',
 				'description' => __( 'Only one matching rate per priority applies. Use a different priority to stack rates.', 'woocommerce' ),
-				'minimum'     => 1,
+				'minimum'     => 0,
 			),
 			'compound'  => array(
 				'type'        => 'boolean',

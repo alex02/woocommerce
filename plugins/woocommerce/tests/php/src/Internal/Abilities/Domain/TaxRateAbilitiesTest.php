@@ -208,6 +208,33 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox Should accept priority 0, so a stored rate with that priority can be sent back.
+	 */
+	public function test_update_accepts_priority_zero(): void {
+		$rate = $this->create_rate( array( 'rate' => '19' ) );
+
+		$result = $this->run_ability(
+			'woocommerce/tax-rate-update',
+			array(
+				'id'       => $rate['id'],
+				'priority' => 0,
+			)
+		);
+
+		$this->assertNotWPError( $result );
+		$this->assertSame( 0, $result['rate']['priority'] );
+	}
+
+	/**
+	 * @testdox Should refuse a negative rate.
+	 */
+	public function test_create_refuses_negative_rate(): void {
+		$result = $this->run_ability( 'woocommerce/tax-rate-create', array( 'rate' => '-5' ) );
+
+		$this->assertWPError( $result );
+	}
+
+	/**
 	 * @testdox Should clear the postcodes of a rate when an empty list is sent, and keep its cities.
 	 */
 	public function test_update_clears_postcodes(): void {
