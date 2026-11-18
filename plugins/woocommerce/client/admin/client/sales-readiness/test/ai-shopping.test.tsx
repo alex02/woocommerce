@@ -57,7 +57,10 @@ const view = ( fields: Partial< ShoppingView > = {} ): ShoppingView => ( {
 		learn_more: { href: 'https://ucp.dev/', text: 'Learn how it works' },
 		message: '',
 		path: '/wc/v3/agent-readiness/ucp',
-		error: 'The setting didn’t save.',
+		error_on:
+			'AI shopping wasn’t turned on. Reload the page and try again.',
+		error_off:
+			'AI shopping wasn’t turned off. Reload the page and try again.',
 		unsaved: 'Save your changes to see the updated status.',
 	},
 	coming_soon: null,
@@ -436,6 +439,7 @@ describe( 'AiShopping', () => {
 
 	it( 'puts the switch back and says why when it can’t be turned on', async () => {
 		mockedFetch.mockRejectedValue( {
+			code: 'woocommerce_ucp_required_checks_failing',
 			message: 'Finish the required steps first.',
 			data: { status: 409 },
 		} );
@@ -451,6 +455,36 @@ describe( 'AiShopping', () => {
 			screen.getByText( 'Finish the required steps first.' )
 		).toBeInTheDocument();
 		expect( window.location.assign ).not.toHaveBeenCalled();
+	} );
+
+	it( 'says which way the switch failed when there is no reason to give, such as when offline', async () => {
+		mockedFetch.mockRejectedValue( {
+			code: 'fetch_error',
+			message: 'You are probably offline.',
+		} );
+		renderPage( view( { ucp: { ...view().ucp, blocked: false } } ) );
+
+		fireEvent.click( toggle() );
+		await screen.findByText(
+			'AI shopping wasn’t turned on. Reload the page and try again.'
+		);
+		expect( toggle() ).not.toBeChecked();
+	} );
+
+	it( 'says AI shopping was not turned off when turning it off fails', async () => {
+		mockedFetch.mockRejectedValue( {
+			code: 'internal_server_error',
+			message: 'There has been a critical error.',
+		} );
+		renderPage(
+			view( { ucp: { ...view().ucp, enabled: true, blocked: false } } )
+		);
+
+		fireEvent.click( toggle() );
+		await screen.findByText(
+			'AI shopping wasn’t turned off. Reload the page and try again.'
+		);
+		expect( toggle() ).toBeChecked();
 	} );
 
 	it( 'shows the connection URL read only, with Copy and a link to test it', () => {

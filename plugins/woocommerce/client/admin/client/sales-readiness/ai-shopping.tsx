@@ -207,7 +207,16 @@ export default function AiShopping( { view }: { view: ShoppingView } ) {
 					...current,
 					enabled: ! enable,
 				} ) );
-				say( ( error as { message?: string } )?.message || ucp.error );
+				// Only the required steps reason helps; offline and server errors get the plain line.
+				const failure = error as { code?: string; message?: string };
+				const fallback = enable ? ucp.error_on : ucp.error_off;
+				say(
+					failure?.code ===
+						'woocommerce_ucp_required_checks_failing' &&
+						failure.message
+						? failure.message
+						: fallback
+				);
 				setBusy( false );
 			}
 		},

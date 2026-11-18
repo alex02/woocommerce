@@ -3,7 +3,7 @@
  */
 import { Breadcrumbs, Page } from '@wordpress/admin-ui';
 import { __ } from '@wordpress/i18n';
-import { Notice, Spinner } from '@wordpress/components';
+import { Spinner } from '@wordpress/components';
 
 /**
  * Internal dependencies
@@ -11,6 +11,7 @@ import { Notice, Spinner } from '@wordpress/components';
 import './sales-readiness.scss';
 import { useReadinessView } from './use-readiness-view';
 import { CheckedCard } from './components/checked-card';
+import { ErrorNotice } from './components/error-notice';
 import { FixFirstCard } from './components/fix-first';
 import { DeclaredCard, SectionCard } from './components/section-card';
 
@@ -19,7 +20,8 @@ import { DeclaredCard, SectionCard } from './components/section-card';
  * merchant question with the checks from the last scan, and what the store shares with agents.
  */
 export default function SalesReadiness() {
-	const { view, error, running, runCheck } = useReadinessView( 'page' );
+	const { view, error, reload, running, runCheck } =
+		useReadinessView( 'page' );
 
 	return (
 		<Page
@@ -39,11 +41,7 @@ export default function SalesReadiness() {
 			showSidebarToggle={ false }
 		>
 			<div className="wc-sales-readiness__content">
-				{ error && (
-					<Notice status="error" isDismissible={ false }>
-						{ error }
-					</Notice>
-				) }
+				{ error && <ErrorNotice message={ error } reload={ reload } /> }
 				{ ! view && ! error && <Spinner /> }
 				{ view && (
 					<>

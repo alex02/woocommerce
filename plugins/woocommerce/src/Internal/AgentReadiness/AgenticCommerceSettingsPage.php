@@ -217,7 +217,9 @@ class AgenticCommerceSettingsPage extends \WC_Settings_Page {
 				),
 				'message'     => ( $enabled && array() === $failing ) ? __( 'AI shopping is on. AI assistants can now find and shop your store.', 'woocommerce' ) : '',
 				'path'        => '/wc/v3/agent-readiness/ucp',
-				'error'       => __( 'The setting didn’t save. Reload the page and try again.', 'woocommerce' ),
+				// Shown when the switch didn't save, unless the reason is required steps that aren't done.
+				'error_on'    => __( 'AI shopping wasn’t turned on. Reload the page and try again.', 'woocommerce' ),
+				'error_off'   => __( 'AI shopping wasn’t turned off. Reload the page and try again.', 'woocommerce' ),
 				'unsaved'     => __( 'Save your changes to see the updated status.', 'woocommerce' ),
 			),
 			// Agents can't shop a store that isn't live.

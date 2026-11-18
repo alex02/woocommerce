@@ -14,6 +14,7 @@ import {
 	useReadinessView,
 } from '../use-readiness-view';
 import { RunStatus } from '../components/run-status';
+import { ErrorNotice } from '../components/error-notice';
 
 jest.mock( '@wordpress/api-fetch', () => jest.fn() );
 jest.mock( '@woocommerce/tracks', () => ( { recordEvent: jest.fn() } ) );
@@ -33,6 +34,8 @@ describe( 'useReadinessView', () => {
 	beforeEach( () => {
 		jest.useFakeTimers();
 		mockFetch.mockReset();
+		// Tracks calls from one test must not reach the next one's assertions.
+		jest.requireMock( '@woocommerce/tracks' ).recordEvent.mockClear();
 	} );
 	afterEach( () => jest.useRealTimers() );
 
@@ -95,6 +98,45 @@ describe( 'useReadinessView', () => {
 		}
 		// The first load, then one poll every POLL_MS until POLL_FOR_MS has passed.
 		expect( viewCalls() ).toBe( POLL_FOR_MS / POLL_MS );
+	} );
+
+	it( 'offers Reload page when the results did not load', async () => {
+		mockFetch.mockRejectedValueOnce( new Error( 'offline' ) );
+		const { result } = renderHook( () => useReadinessView( 'page' ) );
+		await act( async () => {} );
+		expect( result.current.error ).toBe(
+			'Your check results didn’t load. Reload the page to try again.'
+		);
+		expect( result.current.reload ).toBe( true );
+	} );
+
+	it( 'does not offer Reload page when Check again fails, since the results and the button are still there', async () => {
+		mockFetch.mockResolvedValueOnce( view( false ) );
+		const { result } = renderHook( () => useReadinessView( 'page' ) );
+		await act( async () => {} );
+		mockFetch.mockRejectedValueOnce( new Error( 'refused' ) );
+		await act( async () => {
+			await result.current.runCheck();
+		} );
+		expect( result.current.error ).toBe(
+			'The check didn’t start. Try Check again.'
+		);
+		expect( result.current.reload ).toBe( false );
+	} );
+
+	it( 'shows Reload page in the notice only when asked', () => {
+		const { rerender } = render(
+			<ErrorNotice message="Your check results didn’t load." reload />
+		);
+		expect(
+			screen.getByRole( 'button', { name: 'Reload page' } )
+		).toBeInTheDocument();
+		rerender(
+			<ErrorNotice message="The check didn’t start." reload={ false } />
+		);
+		expect(
+			screen.queryByRole( 'button', { name: 'Reload page' } )
+		).not.toBeInTheDocument();
 	} );
 
 	it( 'does not record a load error or clear the page when a poll fails', async () => {

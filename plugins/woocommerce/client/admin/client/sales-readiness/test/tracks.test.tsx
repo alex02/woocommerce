@@ -316,7 +316,7 @@ describe( 'Sales readiness tracking', () => {
 			document.querySelector(
 				'.wc-sales-readiness--overview .components-notice'
 			)?.textContent
-		).toContain( 'The check didn’t start. Reload the page to try again.' );
+		).toContain( 'The check didn’t start. Try Check again.' );
 		expect( screen.getByText( 'AI shopping' ) ).toBeTruthy();
 		expect(
 			screen.getByRole( 'button', { name: 'Run checks' } )

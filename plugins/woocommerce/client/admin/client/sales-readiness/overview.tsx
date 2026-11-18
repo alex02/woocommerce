@@ -2,7 +2,7 @@
  * External dependencies
  */
 import { Badge, Card, Text } from '@wordpress/ui';
-import { Button, Notice, Spinner } from '@wordpress/components';
+import { Button, Spinner } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -12,6 +12,7 @@ import './sales-readiness.scss';
 import type { ReadinessView } from './types';
 import { useReadinessView } from './use-readiness-view';
 import { FixFirstList } from './components/fix-first';
+import { ErrorNotice } from './components/error-notice';
 import { RunStatus } from './components/run-status';
 import { trackReadiness } from './tracks';
 
@@ -24,16 +25,14 @@ export default function SalesReadinessOverview( {
 }: {
 	initialView?: ReadinessView | null;
 } ) {
-	const { view, error, running, runCheck } = useReadinessView(
+	const { view, error, reload, running, runCheck } = useReadinessView(
 		'overview',
 		initialView
 	);
 
 	if ( ! view ) {
 		return error ? (
-			<Notice status="error" isDismissible={ false }>
-				{ error }
-			</Notice>
+			<ErrorNotice message={ error } reload={ reload } />
 		) : (
 			<Spinner />
 		);
@@ -42,11 +41,7 @@ export default function SalesReadinessOverview( {
 
 	return (
 		<div className="wc-sales-readiness wc-sales-readiness--overview">
-			{ error && (
-				<Notice status="error" isDismissible={ false }>
-					{ error }
-				</Notice>
-			) }
+			{ error && <ErrorNotice message={ error } reload={ reload } /> }
 			<Card.Root className="wc-sales-readiness-card">
 				<Card.Header>
 					<div className="wc-sales-readiness-card__head">

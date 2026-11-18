@@ -166,7 +166,10 @@ export interface ShoppingView {
 		/** What the switch says under it: that AI shopping is on, or ''. */
 		message: string;
 		path: string;
-		error: string;
+		/** Said when turning AI shopping on didn't save, unless required steps are the reason. */
+		error_on: string;
+		/** Said when turning AI shopping off didn't save. */
+		error_off: string;
 		unsaved: string;
 	};
 	coming_soon: { text: string; link: ViewLink } | null;

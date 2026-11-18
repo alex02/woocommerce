@@ -37,6 +37,8 @@ export function useReadinessView(
 ) {
 	const [ view, setView ] = useState< ReadinessView | null >( initialView );
 	const [ error, setError ] = useState< string | null >( null );
+	// True when the results didn't load, so the page shows no Check again and offers Reload page.
+	const [ reload, setReload ] = useState( false );
 	const [ running, setRunning ] = useState( false );
 	const viewed = useRef( false );
 	const pendingSince = useRef< number | null >( null );
@@ -50,6 +52,7 @@ export function useReadinessView(
 			} );
 			setView( loaded );
 			setError( null );
+			setReload( false );
 			hasView.current = true;
 			if ( ! viewed.current ) {
 				viewed.current = true;
@@ -60,6 +63,7 @@ export function useReadinessView(
 				return;
 			}
 			trackReadiness( 'error', { surface, action: 'load' } );
+			setReload( true );
 			setError(
 				__(
 					'Your check results didn’t load. Reload the page to try again.',
@@ -110,15 +114,12 @@ export function useReadinessView(
 		} catch {
 			trackReadiness( 'error', { surface, action: 'run' } );
 			setError(
-				__(
-					'The check didn’t start. Reload the page to try again.',
-					'woocommerce'
-				)
+				__( 'The check didn’t start. Try Check again.', 'woocommerce' )
 			);
 		} finally {
 			setRunning( false );
 		}
 	}, [ load, surface, view?.intro ] );
 
-	return { view, error, running, runCheck };
+	return { view, error, reload, running, runCheck };
 }
