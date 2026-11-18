@@ -1,0 +1,4 @@
+Significance: patch
+Type: dev
+Comment: Agent readiness: Download for support on AI sales readiness; behind a hidden flag, no merchant change.
+

@@ -78,7 +78,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 	 * to product pages until a refund and returns page is chosen, and UCP offers no checkout while
 	 * guest checkout is off.
 	 */
-	private const SAME_CAUSE = array(
+	public const SAME_CAUSE = array(
 		'no_noindex_directives'        => 'search_visible',
 		'sitemap_lists_products'       => 'search_visible',
 		'sitemap_lastmod'              => 'search_visible',

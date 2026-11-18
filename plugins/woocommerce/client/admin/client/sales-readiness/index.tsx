@@ -3,7 +3,8 @@
  */
 import { Breadcrumbs, Page } from '@wordpress/admin-ui';
 import { __ } from '@wordpress/i18n';
-import { Spinner } from '@wordpress/components';
+import { Notice, Spinner } from '@wordpress/components';
+import { useState } from '@wordpress/element';
 
 /**
  * Internal dependencies
@@ -14,6 +15,7 @@ import { CheckedCard } from './components/checked-card';
 import { ErrorNotice } from './components/error-notice';
 import { FixFirstCard } from './components/fix-first';
 import { DeclaredCard, SectionCard } from './components/section-card';
+import { SupportDownload } from './components/support-download';
 
 /**
  * WooCommerce > Sales readiness: when the store was last checked, Fix first, then a card per
@@ -22,6 +24,7 @@ import { DeclaredCard, SectionCard } from './components/section-card';
 export default function SalesReadiness() {
 	const { view, error, reload, running, runCheck } =
 		useReadinessView( 'page' );
+	const [ downloadError, setDownloadError ] = useState( '' );
 
 	return (
 		<Page
@@ -39,9 +42,18 @@ export default function SalesReadiness() {
 			}
 			subTitle={ view?.description }
 			showSidebarToggle={ false }
+			actions={ <SupportDownload onError={ setDownloadError } /> }
 		>
 			<div className="wc-sales-readiness__content">
 				{ error && <ErrorNotice message={ error } reload={ reload } /> }
+				{ downloadError && (
+					<Notice
+						status="error"
+						onRemove={ () => setDownloadError( '' ) }
+					>
+						{ downloadError }
+					</Notice>
+				) }
 				{ ! view && ! error && <Spinner /> }
 				{ view && (
 					<>
