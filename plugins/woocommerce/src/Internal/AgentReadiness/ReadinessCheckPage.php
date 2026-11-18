@@ -613,7 +613,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 	 *
 	 * @param array<int, array{ok:bool|null,pending?:bool}> $checks The question's checks.
 	 */
-	private static function none_ran( array $checks ): bool {
+	public static function none_ran( array $checks ): bool {
 		return array() !== $checks && array() === array_filter( $checks, static fn( array $check ): bool => null !== $check['ok'] || ! empty( $check['pending'] ) );
 	}
 
@@ -624,12 +624,29 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 	 * @return array<string, mixed>
 	 */
 	private static function cant_check_row( bool $launched ): array {
-		return self::row(
-			'cant_check',
-			'unknown',
-			$launched ? __( 'We couldn’t check your pages', 'woocommerce' ) : __( 'Your store is in coming soon mode', 'woocommerce' ),
-			$launched ? __( 'Your hosting setup blocked the check from opening them. Try again later, or contact your hosting provider.', 'woocommerce' ) : __( 'These checks run once your store is live.', 'woocommerce' )
-		);
+		$copy = self::cant_check_copy( $launched );
+		return self::row( 'cant_check', 'unknown', $copy[0], $copy[1] );
+	}
+
+	/**
+	 * Why none of the scanned checks ran, as a title and a line. The support report says the same.
+	 *
+	 * @param bool $launched Whether the store is launched.
+	 * @return array{0:string,1:string}
+	 */
+	public static function cant_check_copy( bool $launched ): array {
+		return $launched
+			? array( __( 'We couldn’t check your pages', 'woocommerce' ), __( 'Your hosting setup blocked the check from opening them. Try again later, or contact your hosting provider.', 'woocommerce' ) )
+			: array( __( 'Your store is in coming soon mode', 'woocommerce' ), __( 'These checks run once your store is live.', 'woocommerce' ) );
+	}
+
+	/**
+	 * What the page says about a failing store check, so the support report uses the same words.
+	 *
+	 * @param array{id:string,name:string,label?:string,why:string,fix?:string,fix_url:string,conflict?:bool,source?:string} $check Store check.
+	 */
+	public static function failing_text( array $check ): string {
+		return self::failing_copy( $check )['text'];
 	}
 
 	/**

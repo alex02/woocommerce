@@ -181,6 +181,8 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 	 * @testdox The support report lists each check with its status and what was found, product counts with their IDs, and hides a same-cause check.
 	 */
 	public function test_support_report_after_a_check(): void {
+		$cap    = \WC_Helper_Product::create_simple_product( true, array( 'name' => 'Red cap' ) );
+		$hoodie = \WC_Helper_Product::create_simple_product( true, array( 'name' => 'Blue hoodie' ) );
 		update_option( 'blog_public', '0' );
 		update_option( 'woocommerce_feature_ucp_enabled', 'no' );
 		update_option(
@@ -263,7 +265,7 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 						'id'          => 'missing_brand',
 						'label'       => 'Products with no brand',
 						'count'       => 2,
-						'product_ids' => array( 12, 34 ),
+						'product_ids' => array( $cap->get_id(), $hoodie->get_id() ),
 					),
 					array(
 						'id'    => 'missing_images',
@@ -282,7 +284,9 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 		$this->assertStringContainsString( 'Products checked: 3', $text );
 		$this->assertStringContainsString( 'Hidden: 1', $text );
 		$this->assertStringContainsString( 'Not supported: 2', $text );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] [^\n]*\(search_visible\): \S/m', $text, 'A failing setup step says what was found.' );
+		$this->assertMatchesRegularExpression( '/^\[Failed\] [^\n]*\(search_visible\): AI assistants /m', $text, 'A failing setup step uses the page\'s words.' );
+		$this->assertStringNotContainsString( 'couldn’t check your pages', $text, 'Some checks ran.' );
+		$this->assertMatchesRegularExpression( '/^\[Failed\] [^\n]*\(ucp_on\): Some checks only run when AI shopping is on/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt \(llms_txt_present\): \S[^\n]*Store response: 404 text\/html$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Couldn’t check\] Sitemap lists products \(sitemap_lists_products\)( \(not shown on the page\))?$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Not available yet\] Shipping details \(product_shipping_schema\) \(not shown on the page\)$/m', $text );
@@ -291,8 +295,53 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt starts with a heading \(llms_txt_valid\)[^\n]*\(not shown on the page\)$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] UCP profile \(ucp_profile\)[^\n]*\(not shown on the page\)$/m', $text );
 		$this->assertStringContainsString( 'ChatGPT (chatgpt): 1 can be listed, 2 can’t be listed, 1 listed with missing details', $text );
-		$this->assertStringContainsString( '[Failed] Products with no brand (missing_brand): 2 products. Product IDs: 12, 34', $text );
+		$this->assertStringContainsString( sprintf( '[Failed] Products with no brand (missing_brand): 2 products. Products: %d (Red cap), %d (Blue hoodie)', $cap->get_id(), $hoodie->get_id() ), $text );
 		$this->assertStringContainsString( '[Passed] Products with no image (missing_images)', $text );
+	}
+
+	/**
+	 * @testdox When no store check could run, the support report says why once, as the page does.
+	 */
+	public function test_support_report_says_why_no_check_ran(): void {
+		update_option(
+			AgentReadiness::REPORT_OPTION,
+			array(
+				'generated_at' => '2026-11-18T10:42:00+00:00',
+				'store_checks' => array(
+					array(
+						'id'       => 'llms_txt_present',
+						'ok'       => null,
+						'blocks'   => 'discovery',
+						'name'     => 'llms.txt',
+						'why'      => '',
+						'conflict' => false,
+					),
+					array(
+						'id'       => 'product_shipping_schema',
+						'ok'       => null,
+						'pending'  => true,
+						'blocks'   => 'discovery',
+						'name'     => 'Shipping details',
+						'why'      => '',
+						'conflict' => false,
+					),
+					array(
+						'id'       => 'open_graph_tags',
+						'ok'       => null,
+						'blocks'   => 'discovery',
+						'name'     => 'Open Graph tags',
+						'why'      => '',
+						'conflict' => false,
+					),
+				),
+			),
+			false
+		);
+
+		$text = $this->server->dispatch( new WP_REST_Request( 'GET', '/wc/v3/agent-readiness/support-report' ) )->get_data()['text'];
+
+		$this->assertStringContainsString( "### Store checks ###\n\nWe couldn’t check your pages. Your hosting setup blocked the check from opening them.", $text );
+		$this->assertSame( 1, substr_count( $text, 'couldn’t check your pages' ) );
 	}
 
 	/**

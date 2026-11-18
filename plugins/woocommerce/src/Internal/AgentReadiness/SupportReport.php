@@ -192,7 +192,9 @@ class SupportReport {
 		$scanned = array_slice( $this->agent_readiness->get_store_checks( $report, $live ), count( $live ) );
 		$lines   = array( '### ' . __( 'Setup steps', 'woocommerce' ) . ' ###', '' );
 		foreach ( $live as $check ) {
-			$lines[] = self::check_line( $check, (string) $check['why'] );
+			// The page shows the UCP switch, not a row, so this step takes the page's line for AI shopping being off.
+			$found   = 'ucp_on' === $check['id'] ? __( 'Some checks only run when AI shopping is on, like whether AI assistants can connect to your store and send shoppers to your checkout.', 'woocommerce' ) : ReadinessCheckPage::failing_text( $check );
+			$lines[] = self::check_line( $check, $found );
 		}
 		$lines[] = '';
 		$lines[] = '### ' . __( 'Store checks', 'woocommerce' ) . ' ###';
@@ -202,9 +204,13 @@ class SupportReport {
 			return $lines;
 		}
 		$shown = $this->readiness_page->shown_check_ids( $report, $live );
+		if ( ReadinessCheckPage::none_ran( array_values( array_filter( $scanned, static fn( array $check ): bool => in_array( $check['id'], $shown, true ) ) ) ) ) {
+			$copy    = ReadinessCheckPage::cant_check_copy( (bool) ( array_column( $live, 'ok', 'id' )['launched'] ?? true ) );
+			$lines[] = $copy[0] . '. ' . $copy[1];
+			$lines[] = '';
+		}
 		foreach ( $scanned as $check ) {
-			$copy = ReadinessCopy::store_check( $check['id'], (string) ( $check['source'] ?? '' ) );
-			$line = self::check_line( $check, null !== $copy ? $copy['found'] : (string) $check['why'] );
+			$line = self::check_line( $check, ReadinessCheckPage::failing_text( $check ) );
 			if ( ! in_array( $check['id'], $shown, true ) ) {
 				$line .= ' ' . __( '(not shown on the page)', 'woocommerce' );
 			}
@@ -244,7 +250,7 @@ class SupportReport {
 	}
 
 	/**
-	 * Channel totals, then each product check with its count and example product IDs.
+	 * Channel totals, then each product check with its count and example products, by ID and name.
 	 *
 	 * @param array<string, mixed> $report Stored report.
 	 * @return string[]
@@ -277,7 +283,9 @@ class SupportReport {
 				/* translators: %s: number of products. */
 				$line .= ': ' . sprintf( _n( '%s product', '%s products', $count, 'woocommerce' ), number_format_i18n( $count ) );
 				if ( array() !== $ids ) {
-					$line .= '. ' . __( 'Product IDs', 'woocommerce' ) . ': ' . implode( ', ', $ids );
+					_prime_post_caches( $ids, false, false );
+					$named = array_map( static fn( int $id ): string => sprintf( '%d (%s)', $id, wp_strip_all_tags( get_the_title( $id ) ) ), $ids );
+					$line .= '. ' . __( 'Products', 'woocommerce' ) . ': ' . implode( ', ', $named );
 				}
 			}
 			$lines[] = $line;
