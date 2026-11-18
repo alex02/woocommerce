@@ -51,6 +51,10 @@ describe( 'SupportDownload', () => {
 			'ai-sales-readiness-example.org-2026-11-18.txt'
 		);
 		expect( link.isConnected ).toBe( false );
+		const blob = ( URL.createObjectURL as jest.Mock ).mock
+			.calls[ 0 ][ 0 ] as Blob;
+		expect( blob.type ).toMatch( /^text\/plain/ );
+		expect( blob.size ).toBe( 'Site: https://example.org\n'.length );
 		expect( onError ).toHaveBeenLastCalledWith( '' );
 	} );
 

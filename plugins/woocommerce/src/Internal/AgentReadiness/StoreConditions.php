@@ -318,7 +318,8 @@ class StoreConditions {
 		$names = array();
 		foreach ( WC()->payment_gateways()->payment_gateways() as $gateway ) {
 			if ( $gateway instanceof \WC_Payment_Gateway && 'yes' === $gateway->enabled ) {
-				$names[] = wp_strip_all_tags( '' !== $gateway->get_method_title() ? $gateway->get_method_title() : $gateway->id );
+				$title   = wp_strip_all_tags( (string) $gateway->get_method_title() );
+				$names[] = '' !== $title ? $title : $gateway->id;
 			}
 		}
 		return $names;
