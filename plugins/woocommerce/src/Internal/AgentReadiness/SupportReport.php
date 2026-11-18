@@ -5,7 +5,7 @@ namespace Automattic\WooCommerce\Internal\AgentReadiness;
 
 use Automattic\Jetpack\Constants;
 use Automattic\WooCommerce\Internal\ComingSoon\ComingSoonHelper;
-use Automattic\WooCommerce\Internal\Ucp\UcpUtils;
+use Automattic\WooCommerce\StoreApi\Utilities\Ucp\Utils as UcpUtils;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -176,8 +176,8 @@ class SupportReport {
 	/**
 	 * Every setup step, read now, then every scanned check from the report, with its status and what was found when it fails.
 	 *
-	 * @param array<string, mixed>|null        $report Stored report.
-	 * @param array<int, array<string, mixed>> $live   Store conditions read now.
+	 * @param array<string, mixed>|null                                                                                                     $report Stored report.
+	 * @param array<int, array{id:string,ok:bool,blocks:string,level:string,name:string,label:string,why:string,fix:string,fix_url:string}> $live   Store conditions read now.
 	 * @return string[]
 	 */
 	private function store_checks( ?array $report, array $live ): array {

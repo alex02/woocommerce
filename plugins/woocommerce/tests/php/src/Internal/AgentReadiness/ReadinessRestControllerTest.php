@@ -170,6 +170,7 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 		$this->assertStringContainsString( 'Site: ' . home_url(), $data['text'] );
 		$this->assertStringContainsString( 'WooCommerce version: ' . WC_VERSION, $data['text'] );
 		$this->assertStringContainsString( 'Last checked: Not checked yet', $data['text'] );
+		$this->assertStringContainsString( "AI shopping: Off\nStore visibility: Live", $data['text'] );
 		$this->assertStringContainsString( "### Store checks ###\n\nNot checked yet", $data['text'] );
 		$this->assertStringContainsString( '(launched)', $data['text'], 'Setup steps are read now, so they show before the first check.' );
 		$this->assertStringNotContainsString( '### Product checks ###', $data['text'] );
@@ -181,6 +182,7 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 	 */
 	public function test_support_report_after_a_check(): void {
 		update_option( 'blog_public', '0' );
+		update_option( 'woocommerce_feature_ucp_enabled', 'no' );
 		update_option(
 			AgentReadiness::REPORT_OPTION,
 			array(
@@ -203,6 +205,14 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 						'ok'       => true,
 						'blocks'   => 'discovery',
 						'name'     => 'Open Graph tags',
+						'why'      => '',
+						'conflict' => false,
+					),
+					array(
+						'id'       => 'ucp_profile',
+						'ok'       => false,
+						'blocks'   => 'ucp',
+						'name'     => 'UCP profile',
 						'why'      => '',
 						'conflict' => false,
 					),
@@ -244,12 +254,14 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 
 		$this->assertStringContainsString( 'Last checked: 2026-11-18T10:42:00+00:00', $text );
 		$this->assertStringContainsString( 'Check status: Finished', $text );
+		$this->assertStringContainsString( 'Products checked: 3', $text );
 		$this->assertStringContainsString( 'Hidden: 1', $text );
 		$this->assertStringContainsString( 'Not supported: 2', $text );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] [^\n]*\(search_visible\): \S/m', $text, 'A failing setup step says what was found.' );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt \(llms_txt_present\): \S[^\n]*Store response: 404 text\/html$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Passed\] Open Graph tags \(open_graph_tags\)$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] No noindex \(no_noindex_directives\)[^\n]*\(not shown on the page until “[^”]+” is fixed\)$/m', $text );
+		$this->assertMatchesRegularExpression( '/^\[Failed\] UCP profile \(ucp_profile\)[^\n]*\(not shown on the page while AI shopping is off\)$/m', $text );
 		$this->assertStringContainsString( 'ChatGPT (chatgpt): 1 can be listed, 2 can’t be listed, 1 listed with missing details', $text );
 		$this->assertStringContainsString( '[Failed] Products with no brand (missing_brand): 2 products. Product IDs: 12, 34', $text );
 		$this->assertStringContainsString( '[Passed] Products with no image (missing_images)', $text );
