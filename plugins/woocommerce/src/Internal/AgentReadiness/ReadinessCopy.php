@@ -96,6 +96,11 @@ final class ReadinessCopy {
 			/* translators: %s: UCP version the store serves, a date such as 2026-04-08. */
 			$check[3] = sprintf( __( 'Your store uses an older version of the Universal Commerce Protocol (UCP %s).', 'woocommerce' ), $source );
 		}
+		$store_name = trim( wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES ) );
+		if ( 'llms_txt_valid' === $id && '' !== $store_name ) {
+			/* translators: %s: store name. */
+			$check[4] = sprintf( __( 'Make # %s the first line of the file. Do this in your SEO plugin’s llms.txt settings, or in the llms.txt file in your site’s root folder.', 'woocommerce' ), $store_name );
+		}
 		if ( 'llms_txt_links_resolve' === $id ) {
 			if ( '' !== $link ) {
 				/* translators: %s: the broken link without https://, such as example.com/old-sale. */
@@ -139,9 +144,9 @@ final class ReadinessCopy {
 	public static function llms_txt_source( string $source ): ?array {
 		switch ( $source ) {
 			case 'woocommerce':
-				return array( 'pass' => __( 'From WooCommerce, using your store’s details.', 'woocommerce' ) );
+				return array( 'pass' => __( 'Added by WooCommerce, using your store’s details.', 'woocommerce' ) );
 			case 'file':
-				return array( 'pass' => __( 'From a file in your site’s root folder.', 'woocommerce' ) );
+				return array( 'pass' => __( 'Added to your site’s root folder.', 'woocommerce' ) );
 			case 'other':
 				return array( 'pass' => __( 'Added by a plugin.', 'woocommerce' ) );
 			case 'disabled':
@@ -169,7 +174,8 @@ final class ReadinessCopy {
 				return self::product(
 					/* translators: %s: names of up to three products, such as "Blue hoodie and Red cap", or number of products. */
 					self::title( $count, $names, _n( 'Add a brand to %s', 'Add a brand to %s', $count, 'woocommerce' ), __( 'Add a brand to a product', 'woocommerce' ), sprintf( _n( 'Add a brand to %s product', 'Add a brand to %s products', $count, 'woocommerce' ), $n ) ),
-					__( 'ChatGPT only lists products that have a brand. In Google and Copilot, a brand makes products easier to find.', 'woocommerce' )
+					__( 'ChatGPT only lists products that have a brand. In Google and Copilot, a brand makes products easier to find.', 'woocommerce' ),
+					$count > 1 ? __( 'Find them in Products, and add a brand to each one.', 'woocommerce' ) : ''
 				);
 			case 'missing_gtin':
 				return self::product(
@@ -182,14 +188,14 @@ final class ReadinessCopy {
 				return self::product(
 					/* translators: %s: names of up to three products, such as "Blue hoodie and Red cap", or number of products. */
 					self::title( $count, $names, _n( 'Fix the barcode number of %s', 'Fix the barcode numbers of %s', $count, 'woocommerce' ), __( 'Fix the barcode number of a product', 'woocommerce' ), sprintf( _n( 'Fix the barcode number of %s product', 'Fix the barcode numbers of %s products', $count, 'woocommerce' ), $n ) ),
-					_n( 'The barcode number listed isn’t valid, so AI shopping apps can’t use it to match your product. A barcode number has 8, 12, 13, or 14 digits.', 'The barcode numbers listed aren’t valid, so AI shopping apps can’t use them to match your products. A barcode number has 8, 12, 13, or 14 digits.', $count, 'woocommerce' ),
+					_n( 'This product’s barcode number isn’t valid, so AI shopping apps can’t use it to match the product. A barcode number has 8, 12, 13, or 14 digits.', 'These barcode numbers aren’t valid, so AI shopping apps can’t use them to match your products. A barcode number has 8, 12, 13, or 14 digits.', $count, 'woocommerce' ),
 					__( 'Use the number from the packaging or your supplier.', 'woocommerce' )
 				);
 			case 'duplicate_gtin':
 				return self::product(
 					/* translators: %s: names of up to three products, such as "Blue hoodie and Red cap", or number of products. */
 					self::title( $count, $names, _n( 'Give %s its own barcode number', 'Give %s their own barcode numbers', $count, 'woocommerce' ), __( 'Give a product its own barcode number', 'woocommerce' ), sprintf( _n( 'Give %s product its own barcode number', 'Give %s products their own barcode numbers', $count, 'woocommerce' ), $n ) ),
-					__( 'Products that share a barcode number look like the same product, so AI shopping apps may show the wrong one.', 'woocommerce' ),
+					_n( 'This product shares a barcode number with another product, so AI shopping apps may show the wrong one.', 'Products that share a barcode number look like the same product, so AI shopping apps may show the wrong one.', $count, 'woocommerce' ),
 					__( 'Use the number from the packaging or your supplier.', 'woocommerce' )
 				);
 			case 'missing_regular_price':
@@ -203,7 +209,7 @@ final class ReadinessCopy {
 					/* translators: %s: names of up to three products, such as "Blue hoodie and Red cap", or number of products. */
 					self::title( $count, $names, _n( 'Add a main image to %s', 'Add a main image to %s', $count, 'woocommerce' ), __( 'Add a main image to a product', 'woocommerce' ), sprintf( _n( 'Add a main image to %s product', 'Add a main image to %s products', $count, 'woocommerce' ), $n ) ),
 					__( 'AI shopping apps need a main image to list a product.', 'woocommerce' ),
-					__( 'Add it in the Product image box on each product.', 'woocommerce' )
+					_n( 'Add it in the product’s Product image box.', 'Add one in the Product image box on each product.', $count, 'woocommerce' )
 				);
 			case 'image_too_small':
 				return self::product(
@@ -300,7 +306,7 @@ final class ReadinessCopy {
 				__( 'Let shoppers open store pages without logging in', 'woocommerce' ),
 				__( 'Most AI assistants don’t log in, so they only read pages that are open to everyone.', 'woocommerce' ),
 				__( 'Your store asks everyone to log in before they can see its pages. Most AI assistants don’t log in, so they can’t see your products.', 'woocommerce' ),
-				__( 'If your store isn’t meant to be members-only, check your membership, private store or maintenance plugin, which can ask visitors to log in.', 'woocommerce' ),
+				__( 'Check any membership, private store, or maintenance plugins. These can ask everyone to log in.', 'woocommerce' ),
 				admin_url( 'admin.php?page=wc-settings&tab=site-visibility' ),
 			),
 			'ucp_profile'                    => array(
@@ -422,8 +428,8 @@ final class ReadinessCopy {
 				__( 'AI assistants can read your product details', 'woocommerce' ),
 				__( 'Let AI assistants read your product details', 'woocommerce' ),
 				__( 'WooCommerce adds each product’s name, price, and stock to the page’s code for AI assistants.', 'woocommerce' ),
-				__( 'A product page doesn’t include these details in its code, so AI assistants may get them wrong. A theme or plugin may have turned this off, which usually affects every product page.', 'woocommerce' ),
-				__( 'Check their settings for WooCommerce structured data.', 'woocommerce' ),
+				__( 'A product page doesn’t include these details in its code, so AI assistants may get them wrong.', 'woocommerce' ),
+				__( 'A theme or plugin may have turned this off. Check their settings for WooCommerce structured data.', 'woocommerce' ),
 			),
 			'product_jsonld_from_core'       => array(
 				__( 'Your product pages have one set of product details', 'woocommerce' ),
@@ -464,8 +470,8 @@ final class ReadinessCopy {
 				__( 'Product names and prices show without JavaScript', 'woocommerce' ),
 				__( 'Show product names and prices without JavaScript', 'woocommerce' ),
 				__( 'Most AI assistants read pages without running scripts, so these need to be in the page itself.', 'woocommerce' ),
-				__( 'Your product names and prices only appear after JavaScript runs, so most AI assistants can’t see them. A theme or page builder plugin usually causes this.', 'woocommerce' ),
-				__( 'Check its settings, or contact its support team.', 'woocommerce' ),
+				__( 'Your product names and prices only appear after JavaScript runs, so most AI assistants can’t see them.', 'woocommerce' ),
+				__( 'A theme or page builder plugin usually causes this. Check its settings, or contact its support team.', 'woocommerce' ),
 			),
 			'viewport_meta'                  => array(
 				__( 'Your store’s pages fit small screens', 'woocommerce' ),
@@ -499,7 +505,7 @@ final class ReadinessCopy {
 			'schema_matches_product'         => array(
 				__( 'Product details match your product settings', 'woocommerce' ),
 				__( 'Make product details match your product settings', 'woocommerce' ),
-				__( 'This means AI assistants show shoppers the same name and price as your store.', 'woocommerce' ),
+				__( 'This means AI assistants show shoppers the same name and price you set in WooCommerce.', 'woocommerce' ),
 				__( 'On a product page, the name or price in the page code is different from the one you set for the product, so AI assistants may show a price you don’t charge.', 'woocommerce' ),
 				__( 'A plugin may be changing WooCommerce’s product details. Check its schema or structured data settings.', 'woocommerce' ),
 			),
@@ -533,7 +539,7 @@ final class ReadinessCopy {
 				__( 'Tell AI assistants where shoppers can buy', 'woocommerce' ),
 				__( 'This tells AI assistants where to send shoppers to buy each product.', 'woocommerce' ),
 				__( 'Your product page code doesn’t say where to buy each product, so AI assistants can’t send shoppers to it.', 'woocommerce' ),
-				__( 'Check the schema settings in your SEO plugin or theme.', 'woocommerce' ),
+				__( 'WooCommerce adds this for products that are in stock and have a price. If this one has both, check the schema settings in your SEO plugin or theme.', 'woocommerce' ),
 			),
 			'policy_pages_linked'            => array(
 				__( 'Your home page links to your privacy and returns pages', 'woocommerce' ),

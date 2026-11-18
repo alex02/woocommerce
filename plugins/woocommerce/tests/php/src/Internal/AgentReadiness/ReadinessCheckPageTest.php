@@ -167,8 +167,8 @@ class ReadinessCheckPageTest extends WC_Unit_Test_Case {
 		$note = new \ReflectionMethod( ReadinessCheckPage::class, 'sample_note' );
 		$note->setAccessible( true );
 
-		$this->assertSame( 'These checks look at a selection of your products, including your best seller. If one product has an issue, others may too.', $note->invoke( null, array( 'pages_best_seller' => true ) ) );
-		$this->assertSame( 'These checks look at a selection of your products, including your newest one. If one product has an issue, others may too.', $note->invoke( null, array( 'pages_best_seller' => false ) ) );
+		$this->assertSame( 'These checks look at a selection of your products, including your bestsellers and newest additions. If one product has an issue, others may too.', $note->invoke( null, array( 'pages_best_seller' => true ) ) );
+		$this->assertSame( 'These checks look at a selection of your products, including your newest additions. If one product has an issue, others may too.', $note->invoke( null, array( 'pages_best_seller' => false ) ) );
 		$this->assertNull( $note->invoke( null, array( 'store_checks' => array() ) ) );
 	}
 

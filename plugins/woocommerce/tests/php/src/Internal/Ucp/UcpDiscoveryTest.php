@@ -202,7 +202,7 @@ class UcpDiscoveryTest extends \WC_Unit_Test_Case {
 			$this->set_permalink_structure( '' );
 			$this->assertSame( 'no_file', UcpDiscovery::serve_status() );
 			$fix = UcpDiscovery::discovery_fix( 'no_file' );
-			$this->assertStringContainsString( 'Settings > Permalinks', $fix );
+			$this->assertStringContainsString( 'doesn’t start with index.php', $fix );
 			$this->assertStringContainsString( 'index.php', $fix );
 			$this->assertStringContainsString( 'writable', $fix );
 			$this->assertStringContainsString( $locked, $fix );
@@ -369,18 +369,18 @@ class UcpDiscoveryTest extends \WC_Unit_Test_Case {
 	}
 
 	/**
-	 * @testdox On WordPress.com a file problem points to its support, not to deleting files or changing folder permissions.
+	 * @testdox On WordPress.com the fix names its support where other stores are pointed to their hosting provider.
 	 */
 	public function test_discovery_fix_on_wordpress_com(): void {
-		foreach ( array( 'not_readable', 'file_unusable', 'file_in_the_way', 'file_outdated' ) as $status ) {
-			$fix = UcpDiscovery::discovery_fix( $status, true );
-			$this->assertStringContainsString( '.well-known/ucp', $fix, $status );
-			$this->assertStringEndsWith( 'Contact WordPress.com support to fix it.', $fix, $status );
-			$this->assertStringNotContainsString( 'writable', $fix, $status );
-			$this->assertStringContainsString( 'writable', UcpDiscovery::discovery_fix( $status, false ), "{$status} elsewhere" );
+		foreach ( array( 'not_readable', 'file_unusable', 'file_in_the_way', 'file_outdated', 'no_file' ) as $status ) {
+			$wpcom = UcpDiscovery::discovery_fix( $status, true );
+			$other = UcpDiscovery::discovery_fix( $status, false );
+			$this->assertStringContainsString( 'contact WordPress.com support', $wpcom, $status );
+			$this->assertStringNotContainsString( 'hosting provider', $wpcom, $status );
+			$this->assertStringContainsString( 'ask your hosting provider', $other, $status );
+			$this->assertStringNotContainsString( 'WordPress.com', $other, $status );
 		}
-		$this->assertStringNotContainsString( 'writable', UcpDiscovery::discovery_fix( 'no_file', true ) );
-		$this->assertStringContainsString( 'Settings > Permalinks', UcpDiscovery::discovery_fix( 'no_file', true ) );
+		$this->assertStringContainsString( '.well-known/ucp', UcpDiscovery::discovery_fix( 'not_readable', true ) );
 		$this->assertSame( '', UcpDiscovery::discovery_fix( 'ok', true ) );
 	}
 }

@@ -576,6 +576,34 @@ class StoreOutputChecksTest extends WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox A page check stops at the first product page that fails: the next sampled product is not read.
+	 */
+	public function test_page_check_stops_at_the_first_failure(): void {
+		for ( $i = 0; $i < 3; $i++ ) {
+			$product = WC_Helper_Product::create_simple_product();
+			$product->set_date_created( time() - ( $i + 1 ) * HOUR_IN_SECONDS );
+			$product->save();
+		}
+		$responses = $this->sut->responses();
+		$sample    = array_map( static fn( \WC_Product $product ): int => $product->get_id(), $responses->products() );
+		$read      = array();
+		$test      = static function ( StoreResponses $responses ) use ( &$read, $sample ): ?bool {
+			$product = $responses->product();
+			$read[]  = null === $product ? 0 : $product->get_id();
+			// The second sampled product's page fails; without a product page the check passes.
+			return null === $product || $product->get_id() !== $sample[1];
+		};
+		$on_sample = new \ReflectionMethod( StoreOutputChecks::class, 'on_sample' );
+		$on_sample->setAccessible( true );
+		$failed = null;
+		$ok     = $on_sample->invokeArgs( null, array( $test, $responses, &$failed ) );
+
+		$this->assertFalse( $ok );
+		$this->assertSame( $sample[1], $failed->get_id() );
+		$this->assertSame( array( $sample[0], $sample[1], 0 ), $read, 'The first two pages, then once without a product page; the third is never read' );
+	}
+
+	/**
 	 * @testdox On a larger store the sample is the newest product, then products picked the same way on every scan, not only the newest ones.
 	 */
 	public function test_sample_is_the_newest_product_then_steady_picks(): void {

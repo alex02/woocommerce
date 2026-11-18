@@ -207,7 +207,7 @@ class StoreConditionsTest extends WC_Unit_Test_Case {
 			}
 			$this->assertSame( array( 'ucp_discovery' ), $this->sut->failing_required() );
 			$fix = $this->ucp_discovery_fix();
-			$this->assertStringContainsString( 'Settings > Permalinks', $fix );
+			$this->assertStringContainsString( 'doesn’t start with index.php', $fix );
 			$this->assertStringContainsString( 'writable', $fix );
 			$checks = array_column( $this->sut->all(), null, 'id' );
 			$this->assertSame( admin_url( 'options-permalink.php' ), $checks['ucp_discovery']['fix_url'] );
@@ -220,10 +220,10 @@ class StoreConditionsTest extends WC_Unit_Test_Case {
 
 	/**
 	 * @testdox A /.well-known/ucp file in the way fails the UCP address check with the fix for its reason, and deleting it passes the check.
-	 * @testWith ["foreign", "Remove the "]
-	 *           ["outdated", "Delete the "]
-	 *           ["not_json", "The "]
-	 *           ["unreadable", "WooCommerce can't read "]
+	 * @testWith ["foreign", "A file at "]
+	 *           ["outdated", "The file at "]
+	 *           ["not_json", "The file at "]
+	 *           ["unreadable", "WooCommerce can’t read the file at "]
 	 *
 	 * @param string $file   Someone else's file, an old profile, invalid JSON, or a file the web server can't read.
 	 * @param string $prefix How the fix should start.

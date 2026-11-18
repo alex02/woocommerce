@@ -243,7 +243,7 @@ class StoreConditions {
 			'name'    => __( 'Use a readable permalink structure', 'woocommerce' ),
 			// Without a file in the way, Plain permalinks are why the connection URL doesn't load.
 			'label'   => 'no_file' === $status ? __( 'Use a readable permalink structure', 'woocommerce' ) : __( 'Fix your connection URL', 'woocommerce' ),
-			'why'     => 'no_file' === $status ? __( 'Any structure except Plain lets AI assistants reach your store.', 'woocommerce' ) : __( 'AI assistants use your connection URL to find your products, and it doesn\'t load your store\'s details.', 'woocommerce' ),
+			'why'     => 'no_file' === $status ? __( 'Any structure except Plain lets AI assistants reach your store.', 'woocommerce' ) : __( 'AI assistants use your connection URL to find your products, so it needs to load your store’s details.', 'woocommerce' ),
 			'fix'     => UcpDiscovery::discovery_fix( $status ),
 			// Permalinks are one fix only when nothing is serving the address. A file in the way is removed on disk.
 			'fix_url' => 'no_file' === $status ? admin_url( 'options-permalink.php' ) : '',

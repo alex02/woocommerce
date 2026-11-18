@@ -774,7 +774,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 	private static function ranking_text( array $report, array $items ): string {
 		// A report from before sales were read has no `sales` key; the next check fills it in.
 		if ( ! array_key_exists( 'sales', $report ) ) {
-			return __( 'Ranked by how many products and AI apps each issue affects.', 'woocommerce' );
+			return __( 'Start with the fixes that affect the most products. Check again to rank them by sales.', 'woocommerce' );
 		}
 		$sales = is_array( $report['sales'] ) ? $report['sales'] : null;
 		if ( null === $sales ) {
@@ -787,7 +787,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 		$days   = (int) ( $sales['days'] ?? 0 );
 		// No sales, or too few to rank by.
 		if ( $orders < ProductSales::MIN_ORDERS ) {
-			return __( 'Start with the fixes that affect the most products. Sales rankings start once your store has enough orders.', 'woocommerce' );
+			return __( 'Start with the fixes that affect the most products. Sales rankings start once your store has enough sales.', 'woocommerce' );
 		}
 		// No issue on the card with sales: the products sold nothing, store-wide issues filled the card, or counts changed since the check.
 		if ( array() === array_filter( $items, static fn( array $item ): bool => ( $item['share'] ?? 0.0 ) > 0.0 ) ) {
@@ -1106,8 +1106,8 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 			return null;
 		}
 		return $report['pages_best_seller']
-			? __( 'These checks look at a selection of your products, including your best seller. If one product has an issue, others may too.', 'woocommerce' )
-			: __( 'These checks look at a selection of your products, including your newest one. If one product has an issue, others may too.', 'woocommerce' );
+			? __( 'These checks look at a selection of your products, including your bestsellers and newest additions. If one product has an issue, others may too.', 'woocommerce' )
+			: __( 'These checks look at a selection of your products, including your newest additions. If one product has an issue, others may too.', 'woocommerce' );
 	}
 
 	/**

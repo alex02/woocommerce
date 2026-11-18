@@ -591,7 +591,7 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 		$conflict = $sections['understand']['rows'][0];
 		$this->assertSame( 'Let AI assistants read your product details', $conflict['title'], 'A failing check is headed by what to do' );
 		$this->assertStringStartsWith( 'On the Blue mug page, the name, price, and stock aren’t in the page code', $conflict['text'], 'then why it matters and what the check found, naming the product from the stored report' );
-		$this->assertSame( 'Check their settings for WooCommerce structured data.', $conflict['fix'], 'and the fix, since it has one' );
+		$this->assertSame( 'A theme or plugin may have turned this off. Check their settings for WooCommerce structured data.', $conflict['fix'], 'and the fix, since it has one' );
 		$this->assertNull( $conflict['badge'], 'A likely conflict has no badge; the page it was seen on says where' );
 		$this->assertSame(
 			array(
@@ -921,7 +921,7 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 			'orders' => 12,
 		);
 		update_option( AgentReadiness::REPORT_OPTION, $report );
-		$this->assertSame( 'Start with the fixes that affect the most products. Sales rankings start once your store has enough orders.', $this->view()['fix_first']['ranking'] );
+		$this->assertSame( 'Start with the fixes that affect the most products. Sales rankings start once your store has enough sales.', $this->view()['fix_first']['ranking'] );
 		$this->assertNull( $this->view()['fix_first']['link'], 'Analytics is on, so there is no link to turn it on' );
 
 		$report['sales'] = array(
@@ -929,7 +929,7 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 			'orders' => 0,
 		);
 		update_option( AgentReadiness::REPORT_OPTION, $report );
-		$this->assertSame( 'Start with the fixes that affect the most products. Sales rankings start once your store has enough orders.', $this->view()['fix_first']['ranking'], 'No sales reads like too few orders' );
+		$this->assertSame( 'Start with the fixes that affect the most products. Sales rankings start once your store has enough sales.', $this->view()['fix_first']['ranking'], 'No sales reads like too few orders' );
 
 		$report['sales'] = array(
 			'days'     => 90,
@@ -941,7 +941,7 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 
 		unset( $report['sales'] );
 		update_option( AgentReadiness::REPORT_OPTION, $report );
-		$this->assertSame( 'Ranked by how many products and AI apps each issue affects.', $this->view()['fix_first']['ranking'], 'A report from before sales were read doesn\'t say Analytics is off' );
+		$this->assertSame( 'Start with the fixes that affect the most products. Check again to rank them by sales.', $this->view()['fix_first']['ranking'], 'A report from before sales were read doesn\'t say Analytics is off' );
 	}
 
 	/**
@@ -1890,7 +1890,7 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 
 		try {
 			$step = $this->step( $this->shopping(), 'ucp_discovery' );
-			$this->assertStringContainsString( "didn't write", implode( ' ', $step['lines'] ) );
+			$this->assertStringContainsString( 'that WooCommerce didn’t create is loading instead', implode( ' ', $step['lines'] ) );
 			$this->assertStringContainsString( $path, implode( ' ', $step['lines'] ) );
 			$this->assertNull( $step['link'], 'No permalinks link' );
 		} finally {
@@ -2418,7 +2418,7 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 		$this->assertSame( 'open', $row['state'] );
 		$this->assertNull( $row['badge'], 'No Required badge in Store access' );
 		$this->assertSame( 'Let shoppers open store pages without logging in', $row['title'] );
-		$this->assertStringStartsWith( 'If your store isn’t meant to be members-only', $row['fix'], 'A members-only store can keep its login' );
+		$this->assertStringStartsWith( 'Check any membership, private store, or maintenance plugins', $row['fix'], 'A members-only store can keep its login' );
 		$this->assertStringNotContainsString( 'need to be open', $row['text'] );
 		$this->assertSame( array(), wc_get_container()->get( StoreConditions::class )->failing_required(), 'It doesn\'t block the switch' );
 		$shopping = $this->shopping( $ucp_on );

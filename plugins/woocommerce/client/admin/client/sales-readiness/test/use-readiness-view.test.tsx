@@ -110,6 +110,20 @@ describe( 'useReadinessView', () => {
 		expect( result.current.reload ).toBe( true );
 	} );
 
+	it( 'stops offering Reload page once the results load', async () => {
+		mockFetch.mockRejectedValueOnce( new Error( 'offline' ) );
+		const { result } = renderHook( () => useReadinessView( 'page' ) );
+		await act( async () => {} );
+		expect( result.current.reload ).toBe( true );
+		mockFetch.mockResolvedValueOnce( {} );
+		mockFetch.mockResolvedValueOnce( view( false ) );
+		await act( async () => {
+			await result.current.runCheck();
+		} );
+		expect( result.current.reload ).toBe( false );
+		expect( result.current.error ).toBeNull();
+	} );
+
 	it( 'does not offer Reload page when Check again fails, since the results and the button are still there', async () => {
 		mockFetch.mockResolvedValueOnce( view( false ) );
 		const { result } = renderHook( () => useReadinessView( 'page' ) );
@@ -119,7 +133,7 @@ describe( 'useReadinessView', () => {
 			await result.current.runCheck();
 		} );
 		expect( result.current.error ).toBe(
-			'The check didn’t start. Try Check again.'
+			'The check didn’t start. Try again in a few minutes.'
 		);
 		expect( result.current.reload ).toBe( false );
 	} );
