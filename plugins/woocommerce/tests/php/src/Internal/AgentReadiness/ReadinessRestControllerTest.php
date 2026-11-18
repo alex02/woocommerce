@@ -209,6 +209,14 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 						'conflict' => false,
 					),
 					array(
+						'id'       => 'llms_txt_valid',
+						'ok'       => false,
+						'blocks'   => 'discovery',
+						'name'     => 'llms.txt starts with a heading',
+						'why'      => '',
+						'conflict' => false,
+					),
+					array(
 						'id'       => 'ucp_profile',
 						'ok'       => false,
 						'blocks'   => 'ucp',
@@ -261,6 +269,7 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt \(llms_txt_present\): \S[^\n]*Store response: 404 text\/html$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Passed\] Open Graph tags \(open_graph_tags\)$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] No noindex \(no_noindex_directives\)[^\n]*\(not shown on the page until “[^”]+” is fixed\)$/m', $text );
+		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt starts with a heading \(llms_txt_valid\)[^\n]*\(not shown on the page because “llms\.txt” failed\)$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] UCP profile \(ucp_profile\)[^\n]*\(not shown on the page while AI shopping is off\)$/m', $text );
 		$this->assertStringContainsString( 'ChatGPT (chatgpt): 1 can be listed, 2 can’t be listed, 1 listed with missing details', $text );
 		$this->assertStringContainsString( '[Failed] Products with no brand (missing_brand): 2 products. Product IDs: 12, 34', $text );

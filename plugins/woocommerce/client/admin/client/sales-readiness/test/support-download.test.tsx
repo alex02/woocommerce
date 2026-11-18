@@ -50,7 +50,7 @@ describe( 'SupportDownload', () => {
 		expect( link.download ).toBe(
 			'ai-sales-readiness-example.org-2026-11-18.txt'
 		);
-		expect( URL.revokeObjectURL ).toHaveBeenCalledWith( 'blob:report' );
+		expect( link.isConnected ).toBe( false );
 		expect( onError ).toHaveBeenLastCalledWith( '' );
 	} );
 

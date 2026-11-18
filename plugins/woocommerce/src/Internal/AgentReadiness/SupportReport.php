@@ -181,10 +181,12 @@ class SupportReport {
 	 * @return string[]
 	 */
 	private function store_checks( ?array $report, array $live ): array {
+		$scanned = array_slice( $this->agent_readiness->get_store_checks( $report, $live ), count( $live ) );
 		$steps   = array_column( $live, 'ok', 'id' );
 		$names   = array_column( $live, 'name', 'id' );
+		$results = array_column( $scanned, 'ok', 'id' );
+		$labels  = array_column( $scanned, 'name', 'id' );
 		$lines   = array( '### ' . __( 'Setup steps', 'woocommerce' ) . ' ###', '' );
-		$scanned = array_slice( $this->agent_readiness->get_store_checks( $report, $live ), count( $live ) );
 		foreach ( $live as $check ) {
 			$lines[] = self::check_line( $check, (string) $check['why'] );
 		}
@@ -196,12 +198,16 @@ class SupportReport {
 			return $lines;
 		}
 		foreach ( $scanned as $check ) {
-			$copy = ReadinessCopy::store_check( $check['id'], (string) ( $check['source'] ?? '' ) );
-			$line = self::check_line( $check, null !== $copy ? $copy['found'] : (string) $check['why'] );
-			$step = ReadinessCheckPage::SAME_CAUSE[ $check['id'] ] ?? '';
+			$copy  = ReadinessCopy::store_check( $check['id'], (string) ( $check['source'] ?? '' ) );
+			$line  = self::check_line( $check, null !== $copy ? $copy['found'] : (string) $check['why'] );
+			$step  = ReadinessCheckPage::SAME_CAUSE[ $check['id'] ] ?? '';
+			$needs = ReadinessCheckPage::CHECK_NEEDS[ $check['id'] ] ?? '';
 			if ( false === ( $steps[ $step ] ?? null ) ) {
 				/* translators: %s: name of the setup step, such as "Search engines can index the store". */
 				$line .= ' ' . sprintf( __( '(not shown on the page until “%s” is fixed)', 'woocommerce' ), (string) ( $names[ $step ] ?? $step ) );
+			} elseif ( '' !== $needs && false === ( $results[ $needs ] ?? null ) ) {
+				/* translators: %s: name of the check this one needs, such as "Store serves an llms.txt file". */
+				$line .= ' ' . sprintf( __( '(not shown on the page because “%s” failed)', 'woocommerce' ), (string) ( $labels[ $needs ] ?? $needs ) );
 			} elseif ( 'ucp' === $check['blocks'] && ! UcpUtils::is_enabled() ) {
 				$line .= ' ' . __( '(not shown on the page while AI shopping is off)', 'woocommerce' );
 			}

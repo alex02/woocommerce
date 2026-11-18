@@ -63,7 +63,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 	/**
 	 * Checks that can only run when the check they name passed, so aren't shown when it failed.
 	 */
-	private const CHECK_NEEDS = array(
+	public const CHECK_NEEDS = array(
 		'product_jsonld_from_core'       => 'product_jsonld_present',
 		'product_jsonld_required_fields' => 'product_jsonld_present',
 		'product_offer_jsonld'           => 'product_jsonld_present',
