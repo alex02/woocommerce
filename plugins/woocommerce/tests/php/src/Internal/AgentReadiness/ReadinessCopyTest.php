@@ -101,6 +101,29 @@ class ReadinessCopyTest extends WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox The llms.txt first-line fix names the store, and keeps the generic line when the store has no name.
+	 */
+	public function test_llms_txt_first_line_fix_names_the_store(): void {
+		$name = get_option( 'blogname' );
+		update_option( 'blogname', 'Blue Sky & Co' );
+		try {
+			$this->assertSame( 'Make # Blue Sky & Co the first line of the file. Do this in your SEO plugin’s llms.txt settings, or in the llms.txt file in your site’s root folder.', ReadinessCopy::store_check( 'llms_txt_valid' )['fix'] );
+			update_option( 'blogname', '' );
+			$this->assertSame( 'Add your store’s name as the file’s first heading.', ReadinessCopy::store_check( 'llms_txt_valid' )['fix'] );
+		} finally {
+			update_option( 'blogname', $name );
+		}
+	}
+
+	/**
+	 * @testdox The brand fix says where to find the products only when there are several.
+	 */
+	public function test_brand_fix_only_for_several_products(): void {
+		$this->assertSame( 'Find them in Products, and add a brand to each one.', ReadinessCopy::product_check( 'missing_brand', 3 )['fix'] );
+		$this->assertSame( '', ReadinessCopy::product_check( 'missing_brand', 1 )['fix'] ?? '' );
+	}
+
+	/**
 	 * @testdox The image size line names Google, the only AI app with the rule, and no date: rules.json moves it to can't be listed when the rule starts.
 	 */
 	public function test_image_size_line_names_google(): void {
