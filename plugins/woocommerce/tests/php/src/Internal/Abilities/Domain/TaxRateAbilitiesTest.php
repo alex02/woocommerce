@@ -448,6 +448,43 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox Should report an error, not the deleted rate, when the check for the rate row fails.
+	 */
+	public function test_delete_reports_a_failed_check_of_the_rate_row(): void {
+		global $wpdb;
+
+		$rate         = $this->create_rate( array( 'rate' => '19' ) );
+		$rates_table  = "{$wpdb->prefix}woocommerce_tax_rates";
+		$hook_ran     = false;
+		$rates_delete = "DELETE FROM {$rates_table} WHERE ";
+		add_action(
+			'woocommerce_tax_rate_deleted',
+			static function () use ( &$hook_ran ) {
+				$hook_ran = true;
+			}
+		);
+		add_filter(
+			'query',
+			static function ( $query ) use ( &$hook_ran, $rates_delete, $rates_table ) {
+				if ( $hook_ran && false !== strpos( $query, "FROM {$rates_table}" ) ) {
+					return 'SELECT * FROM no_such_table_for_the_check';
+				}
+				return str_replace( $rates_delete, $rates_delete . '1 = 0 AND ', $query );
+			}
+		);
+
+		$suppressed = $wpdb->suppress_errors( true );
+		try {
+			$result = $this->run_ability( 'woocommerce/tax-rate-delete', array( 'id' => $rate['id'] ) );
+		} finally {
+			$wpdb->suppress_errors( $suppressed );
+		}
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'woocommerce_ability_tax_rate_delete_failed', $result->get_error_code() );
+	}
+
+	/**
 	 * @testdox Should report a delete as done when a deleted-hook callback runs a query of its own.
 	 */
 	public function test_delete_succeeds_when_the_deleted_hook_runs_a_query(): void {
