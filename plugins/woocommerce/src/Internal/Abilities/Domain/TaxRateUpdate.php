@@ -68,7 +68,7 @@ class TaxRateUpdate extends AbstractDomainAbility implements AbilityDefinition {
 				'annotations'  => array(
 					'readonly'    => false,
 					'idempotent'  => true,
-					'destructive' => false,
+					'destructive' => true,
 				),
 			),
 		);

@@ -40,7 +40,7 @@ class TaxRateDelete extends AbstractDomainAbility implements AbilityDefinition {
 	public static function get_registration_args(): array {
 		return array(
 			'label'               => __( 'Delete tax rate', 'woocommerce' ),
-			'description'         => __( 'Permanently delete a tax rate by its id from tax-rates-query. Returns the rate as it was, so tax-rate-create can add it back under a new id.', 'woocommerce' ),
+			'description'         => __( 'Permanently delete a tax rate by its id from tax-rates-query. Returns the deleted rate; send its fields except id to tax-rate-create to add it back.', 'woocommerce' ),
 			'category'            => 'woocommerce',
 			'input_schema'        => array(
 				'type'                 => 'object',
@@ -80,12 +80,17 @@ class TaxRateDelete extends AbstractDomainAbility implements AbilityDefinition {
 	 * @since 11.4.0
 	 */
 	public static function execute( array $input ) {
+		global $wpdb;
+
 		$rate = self::get_rate_or_error( $input['id'] );
 		if ( is_wp_error( $rate ) ) {
 			return $rate;
 		}
 
 		\WC_Tax::_delete_tax_rate( $input['id'] );
+		if ( 0 === $wpdb->rows_affected ) {
+			return new \WP_Error( 'woocommerce_ability_tax_rate_delete_failed', __( 'The tax rate could not be deleted.', 'woocommerce' ), array( 'status' => 500 ) );
+		}
 
 		return array( 'rate' => $rate );
 	}

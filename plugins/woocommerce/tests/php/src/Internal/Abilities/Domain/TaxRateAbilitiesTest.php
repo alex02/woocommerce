@@ -167,8 +167,13 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 	 * @testdox Should give a created rate the defaults of the tax settings screen and place it after the rates of its class.
 	 */
 	public function test_create_applies_defaults_and_appends(): void {
-		$first  = $this->create_rate( array( 'rate' => '19' ) );
-		$second = $this->create_rate( array( 'rate' => '20' ) );
+		$first_id = \WC_Tax::_insert_tax_rate(
+			array(
+				'tax_rate'       => '19',
+				'tax_rate_order' => 5,
+			)
+		);
+		$second   = $this->create_rate( array( 'rate' => '20' ) );
 
 		$this->assertSame( 'standard', $second['class'] );
 		$this->assertSame( 1, $second['priority'] );
@@ -177,8 +182,10 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 		$this->assertSame( '', $second['country'] );
 		$this->assertSame( 'Tax', $second['name'] );
 
+		$this->assertSame( '6', \WC_Tax::_get_tax_rate( $second['id'] )['tax_rate_order'], 'The new rate should come after the existing rates of its class.' );
+
 		$query = $this->run_ability( 'woocommerce/tax-rates-query' );
-		$this->assertSame( array( $first['id'], $second['id'] ), array_column( $query['rates'], 'id' ) );
+		$this->assertSame( array( $first_id, $second['id'] ), array_column( $query['rates'], 'id' ) );
 	}
 
 	/**
@@ -249,6 +256,30 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 		);
 
 		$this->assertSame( array( '10682', '10701', '106*', '10600...10699' ), $rate['postcodes'] );
+	}
+
+	/**
+	 * @testdox Should refuse a postcode or city that would save as nothing or as two entries, and keep the stored ones.
+	 */
+	public function test_update_refuses_locations_that_lift_the_restriction(): void {
+		$rate = $this->create_rate(
+			array(
+				'rate'      => '19',
+				'postcodes' => array( '10115' ),
+				'cities'    => array( 'BERLIN' ),
+			)
+		);
+
+		foreach ( array( array( 'postcodes' => array( '-' ) ), array( 'postcodes' => array( '*' ) ), array( 'cities' => array( 'Berlin;Paris' ) ) ) as $locations ) {
+			$result = $this->run_ability( 'woocommerce/tax-rate-update', array( 'id' => $rate['id'] ) + $locations );
+
+			$this->assertWPError( $result );
+			$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+		}
+
+		$stored = $this->run_ability( 'woocommerce/tax-rates-query', array( 'include' => array( $rate['id'] ) ) )['rates'][0];
+		$this->assertSame( array( '10115' ), $stored['postcodes'] );
+		$this->assertSame( array( 'BERLIN' ), $stored['cities'] );
 	}
 
 	/**
@@ -392,6 +423,28 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 			$wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}woocommerce_tax_rate_locations WHERE tax_rate_id = %d", $rate['id'] ) ),
 			'The locations of the rate should be gone.'
 		);
+	}
+
+	/**
+	 * @testdox Should report an error, not the deleted rate, when the rate row is not removed.
+	 */
+	public function test_delete_reports_a_rate_row_that_was_not_removed(): void {
+		global $wpdb;
+
+		$rate         = $this->create_rate( array( 'rate' => '19' ) );
+		$rates_delete = "DELETE FROM {$wpdb->prefix}woocommerce_tax_rates WHERE ";
+		add_filter(
+			'query',
+			static function ( $query ) use ( $rates_delete ) {
+				return str_replace( $rates_delete, $rates_delete . '1 = 0 AND ', $query );
+			}
+		);
+
+		$result = $this->run_ability( 'woocommerce/tax-rate-delete', array( 'id' => $rate['id'] ) );
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'woocommerce_ability_tax_rate_delete_failed', $result->get_error_code() );
+		$this->assertSame( 500, $result->get_error_data()['status'] );
 	}
 
 	/**

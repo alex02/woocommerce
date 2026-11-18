@@ -133,7 +133,8 @@ trait TaxRateAbilityTrait {
 			'type'  => 'array',
 			'items' => array(
 				'type'      => 'string',
-				'minLength' => 1,
+				// WC_Tax drops an entry that is empty or * once trimmed, which would lift the whole restriction.
+				'pattern'   => '^[^;]*[^\s;*-][^;]*$',
 				'maxLength' => 200,
 			),
 		);

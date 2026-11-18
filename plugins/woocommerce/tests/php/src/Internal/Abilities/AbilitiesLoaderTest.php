@@ -290,7 +290,7 @@ class AbilitiesLoaderTest extends \WC_Unit_Test_Case {
 			'woocommerce/tax-rate-update'             => array(
 				'readonly'    => false,
 				'idempotent'  => true,
-				'destructive' => false,
+				'destructive' => true,
 			),
 			'woocommerce/tax-rate-delete'             => array(
 				'readonly'    => false,
