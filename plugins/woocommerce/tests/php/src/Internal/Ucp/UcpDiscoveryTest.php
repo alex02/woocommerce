@@ -367,4 +367,20 @@ class UcpDiscoveryTest extends \WC_Unit_Test_Case {
 			}
 		}
 	}
+
+	/**
+	 * @testdox On WordPress.com a file problem points to its support, not to deleting files or changing folder permissions.
+	 */
+	public function test_discovery_fix_on_wordpress_com(): void {
+		foreach ( array( 'not_readable', 'file_unusable', 'file_in_the_way', 'file_outdated' ) as $status ) {
+			$fix = UcpDiscovery::discovery_fix( $status, true );
+			$this->assertStringContainsString( '.well-known/ucp', $fix, $status );
+			$this->assertStringEndsWith( 'Contact WordPress.com support to fix it.', $fix, $status );
+			$this->assertStringNotContainsString( 'writable', $fix, $status );
+			$this->assertStringContainsString( 'writable', UcpDiscovery::discovery_fix( $status, false ), "{$status} elsewhere" );
+		}
+		$this->assertStringNotContainsString( 'writable', UcpDiscovery::discovery_fix( 'no_file', true ) );
+		$this->assertStringContainsString( 'Settings > Permalinks', UcpDiscovery::discovery_fix( 'no_file', true ) );
+		$this->assertSame( '', UcpDiscovery::discovery_fix( 'ok', true ) );
+	}
 }

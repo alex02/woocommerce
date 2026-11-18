@@ -89,12 +89,38 @@ final class UcpDiscovery implements RegisterHooksInterface {
 	/**
 	 * What a merchant should do for a failing serve_status() value. Includes the file path.
 	 *
-	 * @param string $status A status from serve_status().
+	 * On WordPress.com the merchant can't change the server's files or folders, so a file
+	 * problem points to its support instead.
+	 *
+	 * @param string    $status        A status from serve_status().
+	 * @param bool|null $wordpress_com Whether the site is on WordPress.com, or null to detect it.
 	 * @return string Empty when the address is already served.
 	 */
-	public static function discovery_fix( string $status ): string {
+	public static function discovery_fix( string $status, ?bool $wordpress_com = null ): string {
 		$path = self::get_file_path();
 		$dir  = dirname( $path );
+
+		// The same test Jetpack uses for a WordPress.com site (Host::is_woa_site()).
+		$wordpress_com = $wordpress_com ?? ( defined( 'ATOMIC_SITE_ID' ) && ATOMIC_SITE_ID && defined( 'ATOMIC_CLIENT_ID' ) && ATOMIC_CLIENT_ID );
+		if ( $wordpress_com ) {
+			$support = __( 'Contact WordPress.com support to fix it.', 'woocommerce' );
+			switch ( $status ) {
+				case 'not_readable':
+					/* translators: %s: discovery file path. */
+					return sprintf( __( 'WooCommerce can\'t read %s.', 'woocommerce' ), $path ) . ' ' . $support;
+				case 'file_unusable':
+					/* translators: %s: discovery file path. */
+					return sprintf( __( 'The %s file is incomplete or damaged, so your connection URL can give AI assistants wrong details.', 'woocommerce' ), $path ) . ' ' . $support;
+				case 'file_in_the_way':
+					/* translators: %s: discovery file path. */
+					return sprintf( __( 'A %s file that WooCommerce didn\'t write loads instead of your store\'s details.', 'woocommerce' ), $path ) . ' ' . $support;
+				case 'file_outdated':
+					/* translators: %s: discovery file path. */
+					return sprintf( __( 'The %s file has old store details.', 'woocommerce' ), $path ) . ' ' . $support;
+				case 'no_file':
+					return __( 'Choose any structure except Plain under Settings > Permalinks. Structures that start with index.php don\'t work either.', 'woocommerce' );
+			}
+		}
 
 		switch ( $status ) {
 			case 'not_readable':
