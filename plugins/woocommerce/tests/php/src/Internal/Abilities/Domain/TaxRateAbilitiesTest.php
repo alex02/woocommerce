@@ -448,6 +448,25 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox Should report a delete as done when a deleted-hook callback runs a query of its own.
+	 */
+	public function test_delete_succeeds_when_the_deleted_hook_runs_a_query(): void {
+		global $wpdb;
+
+		$rate = $this->create_rate( array( 'rate' => '19' ) );
+		add_action(
+			'woocommerce_tax_rate_deleted',
+			static function () use ( $wpdb ) {
+				$wpdb->get_var( 'SELECT 1' );
+			}
+		);
+
+		$result = $this->run_ability( 'woocommerce/tax-rate-delete', array( 'id' => $rate['id'] ) );
+
+		$this->assertSame( array( 'rate' => $rate ), $result );
+	}
+
+	/**
 	 * @testdox Should let a shop manager create, update and delete rates.
 	 */
 	public function test_shop_manager_can_write(): void {

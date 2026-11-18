@@ -80,15 +80,14 @@ class TaxRateDelete extends AbstractDomainAbility implements AbilityDefinition {
 	 * @since 11.4.0
 	 */
 	public static function execute( array $input ) {
-		global $wpdb;
-
 		$rate = self::get_rate_or_error( $input['id'] );
 		if ( is_wp_error( $rate ) ) {
 			return $rate;
 		}
 
 		\WC_Tax::_delete_tax_rate( $input['id'] );
-		if ( 0 === $wpdb->rows_affected ) {
+		// The deleted hook may run queries of its own, so check the row rather than $wpdb->rows_affected.
+		if ( \WC_Tax::_get_tax_rate( $input['id'] ) ) {
 			return new \WP_Error( 'woocommerce_ability_tax_rate_delete_failed', __( 'The tax rate could not be deleted.', 'woocommerce' ), array( 'status' => 500 ) );
 		}
 
