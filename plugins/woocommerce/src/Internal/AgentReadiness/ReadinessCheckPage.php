@@ -63,7 +63,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 	/**
 	 * Checks that can only run when the check they name passed, so aren't shown when it failed.
 	 */
-	public const CHECK_NEEDS = array(
+	private const CHECK_NEEDS = array(
 		'product_jsonld_from_core'       => 'product_jsonld_present',
 		'product_jsonld_required_fields' => 'product_jsonld_present',
 		'product_offer_jsonld'           => 'product_jsonld_present',
@@ -78,7 +78,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 	 * to product pages until a refund and returns page is chosen, and UCP offers no checkout while
 	 * guest checkout is off.
 	 */
-	public const SAME_CAUSE = array(
+	private const SAME_CAUSE = array(
 		'no_noindex_directives'        => 'search_visible',
 		'sitemap_lists_products'       => 'search_visible',
 		'sitemap_lastmod'              => 'search_visible',
@@ -471,6 +471,17 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 		return sprintf( __( 'Last checked %s', 'woocommerce' ), wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $time ) );
 	}
 
+
+	/**
+	 * Ids of the store checks this page shows, so the support report can note the ones it leaves out.
+	 *
+	 * @param array<string, mixed>|null                                                                                                     $report Stored report.
+	 * @param array<int, array{id:string,ok:bool,blocks:string,level:string,name:string,label:string,why:string,fix:string,fix_url:string}> $checks Store conditions.
+	 * @return string[]
+	 */
+	public function shown_check_ids( ?array $report, array $checks ): array {
+		return array_column( $this->visible_store_checks( $report, $checks ), 'id' );
+	}
 
 	/**
 	 * The store checks the page shows: the setup steps (UCP itself is the switch, so not a step),

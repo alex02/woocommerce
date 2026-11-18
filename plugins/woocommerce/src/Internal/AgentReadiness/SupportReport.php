@@ -5,7 +5,6 @@ namespace Automattic\WooCommerce\Internal\AgentReadiness;
 
 use Automattic\Jetpack\Constants;
 use Automattic\WooCommerce\Internal\ComingSoon\ComingSoonHelper;
-use Automattic\WooCommerce\StoreApi\Utilities\Ucp\Utils as UcpUtils;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -61,24 +60,33 @@ class SupportReport {
 	private ComingSoonHelper $coming_soon;
 
 	/**
+	 * Sales readiness, which decides which checks it shows.
+	 *
+	 * @var ReadinessCheckPage
+	 */
+	private ReadinessCheckPage $readiness_page;
+
+	/**
 	 * Initialize dependencies.
 	 *
 	 * @internal
 	 *
-	 * @param AgentReadiness   $agent_readiness  Readiness service.
-	 * @param StoreConditions  $store_conditions Store conditions.
-	 * @param ScheduledScan    $scheduled_scan   Background scan.
-	 * @param UcpSwitch        $ucp_switch       UCP switch.
-	 * @param RemoteRules      $remote_rules     Rules file.
-	 * @param ComingSoonHelper $coming_soon      Coming soon mode.
+	 * @param AgentReadiness     $agent_readiness  Readiness service.
+	 * @param StoreConditions    $store_conditions Store conditions.
+	 * @param ScheduledScan      $scheduled_scan   Background scan.
+	 * @param UcpSwitch          $ucp_switch       UCP switch.
+	 * @param RemoteRules        $remote_rules     Rules file.
+	 * @param ComingSoonHelper   $coming_soon      Coming soon mode.
+	 * @param ReadinessCheckPage $readiness_page   Sales readiness.
 	 */
-	final public function init( AgentReadiness $agent_readiness, StoreConditions $store_conditions, ScheduledScan $scheduled_scan, UcpSwitch $ucp_switch, RemoteRules $remote_rules, ComingSoonHelper $coming_soon ): void {
+	final public function init( AgentReadiness $agent_readiness, StoreConditions $store_conditions, ScheduledScan $scheduled_scan, UcpSwitch $ucp_switch, RemoteRules $remote_rules, ComingSoonHelper $coming_soon, ReadinessCheckPage $readiness_page ): void {
 		$this->agent_readiness  = $agent_readiness;
 		$this->store_conditions = $store_conditions;
 		$this->scheduled_scan   = $scheduled_scan;
 		$this->ucp_switch       = $ucp_switch;
 		$this->remote_rules     = $remote_rules;
 		$this->coming_soon      = $coming_soon;
+		$this->readiness_page   = $readiness_page;
 	}
 
 	/**
@@ -182,10 +190,6 @@ class SupportReport {
 	 */
 	private function store_checks( ?array $report, array $live ): array {
 		$scanned = array_slice( $this->agent_readiness->get_store_checks( $report, $live ), count( $live ) );
-		$steps   = array_column( $live, 'ok', 'id' );
-		$names   = array_column( $live, 'name', 'id' );
-		$results = array_column( $scanned, 'ok', 'id' );
-		$labels  = array_column( $scanned, 'name', 'id' );
 		$lines   = array( '### ' . __( 'Setup steps', 'woocommerce' ) . ' ###', '' );
 		foreach ( $live as $check ) {
 			$lines[] = self::check_line( $check, (string) $check['why'] );
@@ -197,19 +201,12 @@ class SupportReport {
 			$lines[] = __( 'Not checked yet', 'woocommerce' );
 			return $lines;
 		}
+		$shown = $this->readiness_page->shown_check_ids( $report, $live );
 		foreach ( $scanned as $check ) {
-			$copy  = ReadinessCopy::store_check( $check['id'], (string) ( $check['source'] ?? '' ) );
-			$line  = self::check_line( $check, null !== $copy ? $copy['found'] : (string) $check['why'] );
-			$step  = ReadinessCheckPage::SAME_CAUSE[ $check['id'] ] ?? '';
-			$needs = ReadinessCheckPage::CHECK_NEEDS[ $check['id'] ] ?? '';
-			if ( false === ( $steps[ $step ] ?? null ) ) {
-				/* translators: %s: name of the setup step, such as "Search engines can index the store". */
-				$line .= ' ' . sprintf( __( '(not shown on the page until “%s” is fixed)', 'woocommerce' ), (string) ( $names[ $step ] ?? $step ) );
-			} elseif ( '' !== $needs && false === ( $results[ $needs ] ?? null ) ) {
-				/* translators: %s: name of the check this one needs, such as "Store serves an llms.txt file". */
-				$line .= ' ' . sprintf( __( '(not shown on the page because “%s” failed)', 'woocommerce' ), (string) ( $labels[ $needs ] ?? $needs ) );
-			} elseif ( 'ucp' === $check['blocks'] && ! UcpUtils::is_enabled() ) {
-				$line .= ' ' . __( '(not shown on the page while AI shopping is off)', 'woocommerce' );
+			$copy = ReadinessCopy::store_check( $check['id'], (string) ( $check['source'] ?? '' ) );
+			$line = self::check_line( $check, null !== $copy ? $copy['found'] : (string) $check['why'] );
+			if ( ! in_array( $check['id'], $shown, true ) ) {
+				$line .= ' ' . __( '(not shown on the page)', 'woocommerce' );
 			}
 			$lines[] = $line;
 		}

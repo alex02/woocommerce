@@ -217,6 +217,23 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 						'conflict' => false,
 					),
 					array(
+						'id'       => 'sitemap_lists_products',
+						'ok'       => null,
+						'blocks'   => 'discovery',
+						'name'     => 'Sitemap lists products',
+						'why'      => '',
+						'conflict' => false,
+					),
+					array(
+						'id'       => 'product_shipping_schema',
+						'ok'       => null,
+						'pending'  => true,
+						'blocks'   => 'discovery',
+						'name'     => 'Shipping details',
+						'why'      => '',
+						'conflict' => false,
+					),
+					array(
 						'id'       => 'ucp_profile',
 						'ok'       => false,
 						'blocks'   => 'ucp',
@@ -267,10 +284,12 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 		$this->assertStringContainsString( 'Not supported: 2', $text );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] [^\n]*\(search_visible\): \S/m', $text, 'A failing setup step says what was found.' );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt \(llms_txt_present\): \S[^\n]*Store response: 404 text\/html$/m', $text );
+		$this->assertMatchesRegularExpression( '/^\[Couldn’t check\] Sitemap lists products \(sitemap_lists_products\)$/m', $text );
+		$this->assertMatchesRegularExpression( '/^\[Not available yet\] Shipping details \(product_shipping_schema\) \(not shown on the page\)$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Passed\] Open Graph tags \(open_graph_tags\)$/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] No noindex \(no_noindex_directives\)[^\n]*\(not shown on the page until “[^”]+” is fixed\)$/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt starts with a heading \(llms_txt_valid\)[^\n]*\(not shown on the page because “llms\.txt” failed\)$/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] UCP profile \(ucp_profile\)[^\n]*\(not shown on the page while AI shopping is off\)$/m', $text );
+		$this->assertMatchesRegularExpression( '/^\[Failed\] No noindex \(no_noindex_directives\)[^\n]*\(not shown on the page\)$/m', $text );
+		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt starts with a heading \(llms_txt_valid\)[^\n]*\(not shown on the page\)$/m', $text );
+		$this->assertMatchesRegularExpression( '/^\[Failed\] UCP profile \(ucp_profile\)[^\n]*\(not shown on the page\)$/m', $text );
 		$this->assertStringContainsString( 'ChatGPT (chatgpt): 1 can be listed, 2 can’t be listed, 1 listed with missing details', $text );
 		$this->assertStringContainsString( '[Failed] Products with no brand (missing_brand): 2 products. Product IDs: 12, 34', $text );
 		$this->assertStringContainsString( '[Passed] Products with no image (missing_images)', $text );
