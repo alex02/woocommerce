@@ -232,6 +232,48 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 		$result = $this->run_ability( 'woocommerce/tax-rate-create', array( 'rate' => '-5' ) );
 
 		$this->assertWPError( $result );
+		$this->assertSame( 'ability_invalid_input', $result->get_error_code() );
+		$this->assertSame( 0, $this->run_ability( 'woocommerce/tax-rates-query' )['total'], 'No rate should be created.' );
+	}
+
+	/**
+	 * @testdox Should store postcodes without spaces or hyphens, as the tax settings screen does, keeping ranges and wildcards.
+	 */
+	public function test_create_normalizes_postcodes(): void {
+		$rate = $this->create_rate(
+			array(
+				'rate'      => '24',
+				'country'   => 'GR',
+				'postcodes' => array( '106 82', '107-01', '106 *', '106 00...106 99' ),
+			)
+		);
+
+		$this->assertSame( array( '10682', '10701', '106*', '10600...10699' ), $rate['postcodes'] );
+	}
+
+	/**
+	 * @testdox Should match a customer postcode written with a space to a rate saved with that space.
+	 */
+	public function test_spaced_postcode_matches_at_checkout(): void {
+		$rate = $this->create_rate(
+			array(
+				'rate'      => '24',
+				'country'   => 'GR',
+				'postcodes' => array( '106 82' ),
+			)
+		);
+
+		$matched = \WC_Tax::find_rates(
+			array(
+				'country'   => 'GR',
+				'postcode'  => '106 82',
+				'state'     => '',
+				'city'      => '',
+				'tax_class' => '',
+			)
+		);
+
+		$this->assertArrayHasKey( $rate['id'], $matched );
 	}
 
 	/**

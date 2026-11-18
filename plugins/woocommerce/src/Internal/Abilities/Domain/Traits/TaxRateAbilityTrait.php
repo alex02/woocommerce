@@ -107,13 +107,16 @@ trait TaxRateAbilityTrait {
 
 	/**
 	 * Replace the postcodes and cities that the input sends. An empty list clears them.
+	 * Postcodes lose their spaces and hyphens, as on the tax settings screen, since checkout
+	 * only matches a spaced postcode in countries whose format has the space.
 	 *
 	 * @param int   $rate_id Tax rate ID.
 	 * @param array $input   Ability input.
 	 */
 	private static function write_rate_locations( int $rate_id, array $input ): void {
 		if ( isset( $input['postcodes'] ) ) {
-			\WC_Tax::_update_tax_rate_postcodes( $rate_id, implode( ';', array_map( 'sanitize_text_field', $input['postcodes'] ) ) );
+			$postcodes = array_map( 'wc_normalize_postcode', array_map( 'sanitize_text_field', $input['postcodes'] ) );
+			\WC_Tax::_update_tax_rate_postcodes( $rate_id, implode( ';', $postcodes ) );
 		}
 		if ( isset( $input['cities'] ) ) {
 			\WC_Tax::_update_tax_rate_cities( $rate_id, implode( ';', array_map( 'sanitize_text_field', $input['cities'] ) ) );
