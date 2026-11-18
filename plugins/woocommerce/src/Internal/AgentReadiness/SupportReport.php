@@ -11,7 +11,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The plain-text report a merchant downloads from Sales readiness and sends to support. It is built
  * from the stored report and the store's settings, without running a check, and holds only settings,
- * check results and product IDs: no customer or order data, and no keys.
+ * check results and products: no customer or order data, and no keys. Like the System Status Report,
+ * its labels are in English, so support can read any store's report; what the page says stays translated.
  *
  * @since 11.4.0
  */
@@ -90,11 +91,11 @@ class SupportReport {
 	}
 
 	/**
-	 * File name for the download: ai-sales-readiness-<site host>-<date>.txt.
+	 * File name for the download, like the System Status Report's: AISalesReadiness_<site host>_<date and time>.txt.
 	 */
 	public function filename(): string {
 		$host = (string) wp_parse_url( home_url(), PHP_URL_HOST );
-		return sanitize_file_name( 'ai-sales-readiness-' . ( '' !== $host ? $host : 'site' ) . '-' . gmdate( 'Y-m-d' ) . '.txt' );
+		return sanitize_file_name( 'AISalesReadiness_' . ( '' !== $host ? $host : 'site' ) . '_' . gmdate( 'Y-m-d\TH-i-s' ) . '.txt' );
 	}
 
 	/**
@@ -126,24 +127,23 @@ class SupportReport {
 		$rules   = $this->remote_rules->version();
 		$pending = $this->scheduled_scan->is_pending();
 		if ( $pending && $this->scheduled_scan->is_stalled() ) {
-			$state = __( 'Checks can’t start because scheduled actions aren’t running on your site.', 'woocommerce' );
+			$state = 'Checks can’t start because scheduled actions aren’t running on your site.';
 		} elseif ( $pending ) {
-			$state = __( 'Checking your store', 'woocommerce' );
+			$state = 'Checking your store';
 		} else {
-			$state = null === $report ? __( 'Not checked yet', 'woocommerce' ) : __( 'Finished', 'woocommerce' );
+			$state = null === $report ? 'Not checked yet' : 'Finished';
 		}
 		$lines = array(
-			'### ' . __( 'AI sales readiness', 'woocommerce' ) . ' ###',
+			'### AI sales readiness ###',
 			'',
-			__( 'Site', 'woocommerce' ) . ': ' . home_url(),
-			__( 'WooCommerce version', 'woocommerce' ) . ': ' . (string) Constants::get_constant( 'WC_VERSION' ),
-			__( 'Rules version', 'woocommerce' ) . ': ' . ( '' !== $rules ? $rules : __( 'Built into WooCommerce', 'woocommerce' ) ),
-			__( 'Last checked', 'woocommerce' ) . ': ' . ( null === $report ? __( 'Not checked yet', 'woocommerce' ) : (string) ( $report['generated_at'] ?? '' ) ),
-			__( 'Check status', 'woocommerce' ) . ': ' . $state,
+			'Site: ' . home_url(),
+			'WooCommerce version: ' . (string) Constants::get_constant( 'WC_VERSION' ),
+			'Rules version: ' . ( '' !== $rules ? $rules : 'Built into WooCommerce' ),
+			'Last checked: ' . ( null === $report ? 'Not checked yet' : (string) ( $report['generated_at'] ?? '' ) ),
+			'Check status: ' . $state,
 		);
 		if ( null !== $report && ! empty( $report['truncated'] ) ) {
-			/* translators: %s: number of products checked. Reports from before the total was stored. */
-			$lines[] = sprintf( __( 'Checked the %s products you changed most recently.', 'woocommerce' ), number_format_i18n( ProductScan::PRODUCT_LIMIT ) );
+			$lines[] = sprintf( 'Checked the %s products you changed most recently.', ProductScan::PRODUCT_LIMIT );
 		}
 		return $lines;
 	}
@@ -156,27 +156,27 @@ class SupportReport {
 	 */
 	private function shopping( ?array $report ): array {
 		$statuses = array(
-			UcpSwitch::STATUS_ACTIVE          => __( 'On', 'woocommerce' ),
-			UcpSwitch::STATUS_NEEDS_ATTENTION => __( 'On, with required steps left', 'woocommerce' ),
-			UcpSwitch::STATUS_OFF             => __( 'Off', 'woocommerce' ),
+			UcpSwitch::STATUS_ACTIVE          => 'On',
+			UcpSwitch::STATUS_NEEDS_ATTENTION => 'On, with required steps left',
+			UcpSwitch::STATUS_OFF             => 'Off',
 		);
 		if ( $this->coming_soon->is_site_coming_soon() ) {
-			$visibility = __( 'Coming soon mode (whole site)', 'woocommerce' );
+			$visibility = 'Coming soon mode (whole site)';
 		} elseif ( $this->coming_soon->is_store_coming_soon() ) {
-			$visibility = __( 'Coming soon mode (store pages)', 'woocommerce' );
+			$visibility = 'Coming soon mode (store pages)';
 		} else {
-			$visibility = __( 'Live', 'woocommerce' );
+			$visibility = 'Live';
 		}
 		$lines = array(
-			'### ' . __( 'AI shopping', 'woocommerce' ) . ' ###',
+			'### AI shopping ###',
 			'',
-			__( 'AI shopping', 'woocommerce' ) . ': ' . ( $statuses[ $this->ucp_switch->status() ] ?? '' ),
-			__( 'Store visibility', 'woocommerce' ) . ': ' . $visibility,
+			'AI shopping: ' . ( $statuses[ $this->ucp_switch->status() ] ?? '' ),
+			'Store visibility: ' . $visibility,
 		);
 		if ( null !== $report ) {
-			$lines[] = __( 'Products checked', 'woocommerce' ) . ': ' . number_format_i18n( (int) ( $report['products'] ?? 0 ) );
-			$lines[] = __( 'Hidden', 'woocommerce' ) . ': ' . number_format_i18n( (int) ( $report['hidden_from_catalog'] ?? 0 ) );
-			$lines[] = __( 'Not supported', 'woocommerce' ) . ': ' . number_format_i18n( (int) ( $report['unsupported_types'] ?? 0 ) );
+			$lines[] = 'Products checked: ' . (string) ( (int) ( $report['products'] ?? 0 ) );
+			$lines[] = 'Hidden: ' . (string) ( (int) ( $report['hidden_from_catalog'] ?? 0 ) );
+			$lines[] = 'Not supported: ' . (string) ( (int) ( $report['unsupported_types'] ?? 0 ) );
 		}
 		return $lines;
 	}
@@ -190,17 +190,17 @@ class SupportReport {
 	 */
 	private function store_checks( ?array $report, array $live ): array {
 		$scanned = array_slice( $this->agent_readiness->get_store_checks( $report, $live ), count( $live ) );
-		$lines   = array( '### ' . __( 'Setup steps', 'woocommerce' ) . ' ###', '' );
+		$lines   = array( '### Setup steps ###', '' );
 		foreach ( $live as $check ) {
 			// The page shows the UCP switch, not a row, so this step takes the page's line for AI shopping being off.
-			$found   = 'ucp_on' === $check['id'] ? __( 'Some checks only run when AI shopping is on, like whether AI assistants can connect to your store and send shoppers to your checkout.', 'woocommerce' ) : ReadinessCheckPage::failing_text( $check );
+			$found   = 'ucp_on' === $check['id'] ? ReadinessCheckPage::ucp_off_note() : ReadinessCheckPage::failing_text( $check );
 			$lines[] = self::check_line( $check, $found );
 		}
 		$lines[] = '';
-		$lines[] = '### ' . __( 'Store checks', 'woocommerce' ) . ' ###';
+		$lines[] = '### Store checks ###';
 		$lines[] = '';
 		if ( null === $report ) {
-			$lines[] = __( 'Not checked yet', 'woocommerce' );
+			$lines[] = 'Not checked yet';
 			return $lines;
 		}
 		$shown = $this->readiness_page->shown_check_ids( $report, $live );
@@ -212,7 +212,7 @@ class SupportReport {
 		foreach ( $scanned as $check ) {
 			$line = self::check_line( $check, ReadinessCheckPage::failing_text( $check ) );
 			if ( ! in_array( $check['id'], $shown, true ) ) {
-				$line .= ' ' . __( '(not shown on the page)', 'woocommerce' );
+				$line .= ' (not shown on the page)';
 			}
 			$lines[] = $line;
 		}
@@ -227,24 +227,23 @@ class SupportReport {
 	 */
 	private static function check_line( array $check, string $found ): string {
 		if ( ! empty( $check['pending'] ) ) {
-			$status = __( 'Not available yet', 'woocommerce' );
+			$status = 'Not available yet';
 		} elseif ( null === $check['ok'] ) {
-			$status = __( 'Couldn’t check', 'woocommerce' );
+			$status = 'Couldn’t check';
 		} else {
-			$status = $check['ok'] ? __( 'Passed', 'woocommerce' ) : __( 'Failed', 'woocommerce' );
+			$status = $check['ok'] ? '✔' : '❌ ' . trim( $found );
 		}
-		$line = sprintf( '[%s] %s (%s)', $status, $check['name'], $check['id'] );
+		$line = sprintf( '%s (%s): %s', $check['name'], $check['id'], $status );
 		if ( false === $check['ok'] && empty( $check['pending'] ) ) {
-			$line .= ': ' . trim( $found );
 			if ( ! empty( $check['conflict'] ) ) {
-				$line .= ' ' . __( '(Likely conflict)', 'woocommerce' );
+				$line .= ' (Likely conflict)';
 			}
 		}
 		if ( '' !== ( $check['seen_at'] ?? '' ) ) {
-			$line .= ' ' . __( 'Found on', 'woocommerce' ) . ': ' . $check['seen_at'];
+			$line .= ' Found on: ' . $check['seen_at'];
 		}
 		if ( '' !== ( $check['source'] ?? '' ) && true !== $check['ok'] ) {
-			$line .= ' ' . __( 'Store response', 'woocommerce' ) . ': ' . $check['source'];
+			$line .= ' Store response: ' . $check['source'];
 		}
 		return $line;
 	}
@@ -256,19 +255,18 @@ class SupportReport {
 	 * @return string[]
 	 */
 	private static function product_checks( array $report ): array {
-		$lines = array( '### ' . __( 'Product checks', 'woocommerce' ) . ' ###', '' );
+		$lines = array( '### Product checks ###', '' );
 		foreach ( is_array( $report['channels'] ?? null ) ? $report['channels'] : array() as $id => $channel ) {
 			if ( ! is_array( $channel ) ) {
 				continue;
 			}
 			$lines[] = sprintf(
-				/* translators: 1: AI shopping app, such as ChatGPT, 2: its id, 3: products that can be listed, 4: products that can't, 5: products listed with missing details. */
-				__( '%1$s (%2$s): %3$s can be listed, %4$s can’t be listed, %5$s listed with missing details', 'woocommerce' ),
+				'%1$s (%2$s): %3$s can be listed, %4$s can’t be listed, %5$s listed with missing details',
 				(string) ( $channel['name'] ?? $id ),
 				(string) $id,
-				number_format_i18n( (int) ( $channel['listable'] ?? 0 ) ),
-				number_format_i18n( (int) ( $channel['not_listable'] ?? 0 ) ),
-				number_format_i18n( (int) ( $channel['with_gaps'] ?? 0 ) )
+				(string) ( (int) ( $channel['listable'] ?? 0 ) ),
+				(string) ( (int) ( $channel['not_listable'] ?? 0 ) ),
+				(string) ( (int) ( $channel['with_gaps'] ?? 0 ) )
 			);
 		}
 		$lines[] = '';
@@ -277,15 +275,14 @@ class SupportReport {
 				continue;
 			}
 			$count = (int) ( $check['count'] ?? 0 );
-			$line  = sprintf( '[%s] %s (%s)', 0 === $count ? __( 'Passed', 'woocommerce' ) : __( 'Failed', 'woocommerce' ), (string) ( $check['label'] ?? $check['id'] ), (string) $check['id'] );
+			$line  = sprintf( '%s (%s): %s', (string) ( $check['label'] ?? $check['id'] ), (string) $check['id'], 0 === $count ? '✔' : '❌' );
 			if ( $count > 0 ) {
-				$ids = array_map( 'intval', (array) ( $check['product_ids'] ?? array() ) );
-				/* translators: %s: number of products. */
-				$line .= ': ' . sprintf( _n( '%s product', '%s products', $count, 'woocommerce' ), number_format_i18n( $count ) );
+				$ids   = array_map( 'intval', (array) ( $check['product_ids'] ?? array() ) );
+				$line .= ' ' . sprintf( 1 === $count ? '%s product' : '%s products', $count );
 				if ( array() !== $ids ) {
 					_prime_post_caches( $ids, false, false );
 					$named = array_map( static fn( int $id ): string => sprintf( '%d (%s)', $id, wp_strip_all_tags( get_the_title( $id ) ) ), $ids );
-					$line .= '. ' . __( 'Products', 'woocommerce' ) . ': ' . implode( ', ', $named );
+					$line .= '. Products: ' . implode( ', ', $named );
 				}
 			}
 			$lines[] = $line;

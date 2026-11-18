@@ -166,7 +166,7 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 		$data     = $response->get_data();
 
 		$this->assertSame( 200, $response->get_status() );
-		$this->assertMatchesRegularExpression( '/^ai-sales-readiness-[a-z0-9.-]+-\d{4}-\d{2}-\d{2}\.txt$/', $data['filename'] );
+		$this->assertMatchesRegularExpression( '/^AISalesReadiness_[a-z0-9.-]+_\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.txt$/', $data['filename'] );
 		$this->assertStringContainsString( 'Site: ' . home_url(), $data['text'] );
 		$this->assertStringContainsString( 'WooCommerce version: ' . WC_VERSION, $data['text'] );
 		$this->assertStringContainsString( 'Last checked: Not checked yet', $data['text'] );
@@ -284,19 +284,19 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 		$this->assertStringContainsString( 'Products checked: 3', $text );
 		$this->assertStringContainsString( 'Hidden: 1', $text );
 		$this->assertStringContainsString( 'Not supported: 2', $text );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] [^\n]*\(search_visible\): AI assistants /m', $text, 'A failing setup step uses the page\'s words.' );
+		$this->assertMatchesRegularExpression( '/^[^\n]*\(search_visible\): ❌ AI assistants /m', $text, 'A failing setup step uses the page\'s words.' );
 		$this->assertStringNotContainsString( 'couldn’t check your pages', $text, 'Some checks ran.' );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] [^\n]*\(ucp_on\): Some checks only run when AI shopping is on/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt \(llms_txt_present\): \S[^\n]*Store response: 404 text\/html$/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Couldn’t check\] Sitemap lists products \(sitemap_lists_products\)( \(not shown on the page\))?$/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Not available yet\] Shipping details \(product_shipping_schema\) \(not shown on the page\)$/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Passed\] Open Graph tags \(open_graph_tags\)$/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] No noindex \(no_noindex_directives\)[^\n]*\(not shown on the page\)$/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt starts with a heading \(llms_txt_valid\)[^\n]*\(not shown on the page\)$/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] UCP profile \(ucp_profile\)[^\n]*\(not shown on the page\)$/m', $text );
+		$this->assertMatchesRegularExpression( '/^[^\n]*\(ucp_on\): ❌ Some checks only run when AI shopping is on/m', $text );
+		$this->assertMatchesRegularExpression( '/^llms\.txt \(llms_txt_present\): ❌ \S[^\n]*Store response: 404 text\/html$/m', $text );
+		$this->assertMatchesRegularExpression( '/^Sitemap lists products \(sitemap_lists_products\): Couldn’t check( \(not shown on the page\))?$/m', $text );
+		$this->assertMatchesRegularExpression( '/^Shipping details \(product_shipping_schema\): Not available yet \(not shown on the page\)$/m', $text );
+		$this->assertMatchesRegularExpression( '/^Open Graph tags \(open_graph_tags\): ✔$/m', $text );
+		$this->assertMatchesRegularExpression( '/^No noindex \(no_noindex_directives\): ❌[^\n]*\(not shown on the page\)$/m', $text );
+		$this->assertMatchesRegularExpression( '/^llms\.txt starts with a heading \(llms_txt_valid\): ❌[^\n]*\(not shown on the page\)$/m', $text );
+		$this->assertMatchesRegularExpression( '/^UCP profile \(ucp_profile\): ❌[^\n]*\(not shown on the page\)$/m', $text );
 		$this->assertStringContainsString( 'ChatGPT (chatgpt): 1 can be listed, 2 can’t be listed, 1 listed with missing details', $text );
-		$this->assertStringContainsString( sprintf( '[Failed] Products with no brand (missing_brand): 2 products. Products: %d (Red cap), %d (Blue hoodie)', $cap->get_id(), $hoodie->get_id() ), $text );
-		$this->assertStringContainsString( '[Passed] Products with no image (missing_images)', $text );
+		$this->assertStringContainsString( sprintf( 'Products with no brand (missing_brand): ❌ 2 products. Products: %d (Red cap), %d (Blue hoodie)', $cap->get_id(), $hoodie->get_id() ), $text );
+		$this->assertStringContainsString( 'Products with no image (missing_images): ✔', $text );
 	}
 
 	/**

@@ -641,6 +641,13 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 	}
 
 	/**
+	 * The note shown while AI shopping is off. The support report uses it for the UCP step.
+	 */
+	public static function ucp_off_note(): string {
+		return __( 'Some checks only run when AI shopping is on, like whether AI assistants can connect to your store and send shoppers to your checkout.', 'woocommerce' );
+	}
+
+	/**
 	 * What the page says about a failing store check, so the support report uses the same words.
 	 *
 	 * @param array{id:string,name:string,label?:string,why:string,fix?:string,fix_url:string,conflict?:bool,source?:string} $check Store check.
@@ -1124,7 +1131,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 				'id'       => $id,
 				'title'    => $group[0],
 				'badge'    => self::badge_data( $cant && array() === $rows ? array( 'off', __( 'Couldn’t check', 'woocommerce' ) ) : self::group_badge( $checks ) ),
-				'note'     => 'access' === $id && ! UcpUtils::is_enabled() ? __( 'Some checks only run when AI shopping is on, like whether AI assistants can connect to your store and send shoppers to your checkout.', 'woocommerce' ) : ( 'understand' === $id ? self::sample_note( $report ) : null ),
+				'note'     => 'access' === $id && ! UcpUtils::is_enabled() ? self::ucp_off_note() : ( 'understand' === $id ? self::sample_note( $report ) : null ),
 				'channels' => array(),
 				'rows'     => $cant ? array_merge( $rows, array( self::cant_check_row( $launched ) ) ) : $rows,
 				'folded'   => self::check_rows( array_values( $folded ), $launched ),
