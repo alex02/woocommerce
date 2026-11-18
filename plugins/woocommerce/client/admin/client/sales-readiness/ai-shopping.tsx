@@ -287,6 +287,7 @@ export default function AiShopping( { view }: { view: ShoppingView } ) {
 							<Notice.Actions>
 								<Notice.ActionButton
 									variant="outline"
+									className="wc-ai-shopping__notice-action"
 									{ ...asLink( view.coming_soon.link.href ) }
 								>
 									{ view.coming_soon.link.text }

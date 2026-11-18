@@ -17,6 +17,19 @@ body.woocommerce_page_wc-settings:has(.wc-ai-shopping) {
 		margin: 0;
 	}
 
+	// The page header runs edge to edge; the settings form's 30px side padding would inset it.
+	#mainform {
+		padding-inline: 0;
+
+		// The settings pages pull their tab strip over that padding; the breadcrumbs keep the header's own.
+		.wc-ai-shopping nav {
+			margin: 0;
+		}
+	}
+
+	// Popovers open above the cards; @wordpress/ui leaves their z-index to the page.
+	--wp-ui-popover-z-index: 100000;
+
 	// Messages from the last save, such as "Your settings have been saved.", above the page.
 	#mainform > :is(.updated, .error, .notice) {
 		margin: var(--wpds-dimension-gap-lg) var(--wpds-dimension-padding-2xl) 0;
@@ -125,11 +138,6 @@ body.woocommerce_page_wc-settings:has(.wc-ai-shopping) {
 	}
 }
 
-// The checklist's completed steps: "Show N completed steps" under the list, 16px under its line.
-.wc-ai-shopping-fold > .wc-sales-readiness-list > .wc-sales-readiness-row:first-child {
-	padding-block-start: var(--wpds-dimension-padding-md);
-}
-
 .wc-ai-shopping-fold > button {
 	margin-block-start: var(--wpds-dimension-gap-lg);
 }
@@ -158,6 +166,12 @@ body.woocommerce_page_wc-settings:has(.wc-ai-shopping) {
 	}
 }
 
+// The coming soon notice's button is a link, so wp-admin's link blue would override the neutral button's label.
+.wc-ai-shopping__notice-action,
+.wc-ai-shopping__notice-action:is(:hover, :focus, :active) {
+	color: var(--wpds-color-foreground-interactive-neutral);
+}
+
 // DataForm cards.
 .wc-ai-shopping .dataforms-layouts-card__field {
 	position: relative;
@@ -179,6 +193,11 @@ body.woocommerce_page_wc-settings:has(.wc-ai-shopping) {
 
 	.wc-ai-shopping-checklist > .wc-sales-readiness-list:last-child > .wc-sales-readiness-row:last-child {
 		border-block-end: 0;
+	}
+
+	// The checklist's completed steps open under the last open step's line, so the first one keeps its top gap.
+	.wc-ai-shopping-fold .wc-sales-readiness-list > .wc-sales-readiness-row:first-child {
+		padding-block-start: var(--wpds-dimension-padding-md);
 	}
 }
 

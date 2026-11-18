@@ -149,8 +149,14 @@ body:has(.wc-sales-readiness) {
 		padding-block-start: var(--wpds-dimension-padding-xs);
 	}
 
-	:is(&__description, .wc-sales-readiness-channels) + .wc-sales-readiness-list > .wc-sales-readiness-row:first-child {
+	&__description + .wc-sales-readiness-list > .wc-sales-readiness-row:first-child {
 		padding-block-start: 0;
+	}
+
+	// Listings: a line between the channel counts and the first check, as between checks.
+	.wc-sales-readiness-channels + .wc-sales-readiness-list > .wc-sales-readiness-row:first-child {
+		border-block-start: 1px solid var(--wc-sr-stroke);
+		padding-block-start: var(--wpds-dimension-padding-md);
 	}
 
 	// An open fold continues the list above it, under that list's last line.
@@ -267,13 +273,17 @@ body:has(.wc-sales-readiness) {
 		gap: var(--wpds-dimension-gap-xs);
 	}
 
+	// The badge follows the title's last word, so a long title wraps without leaving it on a line of its own.
 	&__title {
-		display: inline-flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: var(--wpds-dimension-gap-sm);
+		display: block;
 		margin-block-end: -2px;
 		font-weight: 600;
+
+		> span {
+			display: inline-flex;
+			margin-inline-start: var(--wpds-dimension-gap-sm);
+			vertical-align: middle;
+		}
 	}
 
 	// The fix line reads as an instruction, so it keeps the text color.
