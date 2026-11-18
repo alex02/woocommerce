@@ -127,7 +127,7 @@ class SupportReport {
 		$rules   = $this->remote_rules->version();
 		$pending = $this->scheduled_scan->is_pending();
 		if ( $pending && $this->scheduled_scan->is_stalled() ) {
-			$state = 'Checks can’t start because scheduled actions aren’t running on your site.';
+			$state = 'Checks can’t start because scheduled actions aren’t running on your site. Your hosting provider can usually turn them back on.';
 		} elseif ( $pending ) {
 			$state = 'Checking your store';
 		} else {
@@ -236,7 +236,7 @@ class SupportReport {
 		$line = sprintf( '%s (%s): %s', $check['name'], $check['id'], $status );
 		if ( false === $check['ok'] && empty( $check['pending'] ) ) {
 			if ( ! empty( $check['conflict'] ) ) {
-				$line .= ' (Likely conflict)';
+				$line .= ' (likely conflict)';
 			}
 		}
 		if ( '' !== ( $check['seen_at'] ?? '' ) ) {
