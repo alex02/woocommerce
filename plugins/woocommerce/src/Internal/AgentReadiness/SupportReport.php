@@ -118,9 +118,9 @@ class SupportReport {
 		$rules   = $this->remote_rules->version();
 		$pending = $this->scheduled_scan->is_pending();
 		if ( $pending && $this->scheduled_scan->is_stalled() ) {
-			$state = __( 'Can’t start: scheduled actions aren’t running', 'woocommerce' );
+			$state = __( 'Checks can’t start because scheduled actions aren’t running on your site.', 'woocommerce' );
 		} elseif ( $pending ) {
-			$state = __( 'Running', 'woocommerce' );
+			$state = __( 'Checking your store', 'woocommerce' );
 		} else {
 			$state = null === $report ? __( 'Not checked yet', 'woocommerce' ) : __( 'Finished', 'woocommerce' );
 		}
@@ -129,13 +129,13 @@ class SupportReport {
 			'',
 			__( 'Site', 'woocommerce' ) . ': ' . home_url(),
 			__( 'WooCommerce version', 'woocommerce' ) . ': ' . (string) Constants::get_constant( 'WC_VERSION' ),
-			__( 'Rules version', 'woocommerce' ) . ': ' . ( '' !== $rules ? $rules : __( 'Bundled', 'woocommerce' ) ),
-			__( 'Last check', 'woocommerce' ) . ': ' . ( null === $report ? __( 'Not checked yet', 'woocommerce' ) : (string) ( $report['generated_at'] ?? '' ) ),
+			__( 'Rules version', 'woocommerce' ) . ': ' . ( '' !== $rules ? $rules : __( 'Built into WooCommerce', 'woocommerce' ) ),
+			__( 'Last checked', 'woocommerce' ) . ': ' . ( null === $report ? __( 'Not checked yet', 'woocommerce' ) : (string) ( $report['generated_at'] ?? '' ) ),
 			__( 'Check status', 'woocommerce' ) . ': ' . $state,
 		);
 		if ( null !== $report && ! empty( $report['truncated'] ) ) {
-			/* translators: %s: number of products checked. */
-			$lines[] = sprintf( __( 'Stopped at %s products', 'woocommerce' ), number_format_i18n( ProductScan::PRODUCT_LIMIT ) );
+			/* translators: %s: number of products checked. Reports from before the total was stored. */
+			$lines[] = sprintf( __( 'Checked the %s products you changed most recently.', 'woocommerce' ), number_format_i18n( ProductScan::PRODUCT_LIMIT ) );
 		}
 		return $lines;
 	}
@@ -149,20 +149,20 @@ class SupportReport {
 	private function shopping( ?array $report ): array {
 		$statuses = array(
 			UcpSwitch::STATUS_ACTIVE          => __( 'On', 'woocommerce' ),
-			UcpSwitch::STATUS_NEEDS_ATTENTION => __( 'On, a required step fails', 'woocommerce' ),
+			UcpSwitch::STATUS_NEEDS_ATTENTION => __( 'On, with required steps left', 'woocommerce' ),
 			UcpSwitch::STATUS_OFF             => __( 'Off', 'woocommerce' ),
 		);
 		if ( $this->coming_soon->is_site_coming_soon() ) {
-			$visibility = __( 'Coming soon (whole site)', 'woocommerce' );
+			$visibility = __( 'Coming soon mode (whole site)', 'woocommerce' );
 		} elseif ( $this->coming_soon->is_store_coming_soon() ) {
-			$visibility = __( 'Coming soon (store pages)', 'woocommerce' );
+			$visibility = __( 'Coming soon mode (store pages)', 'woocommerce' );
 		} else {
 			$visibility = __( 'Live', 'woocommerce' );
 		}
 		$lines = array(
 			'### ' . __( 'AI shopping', 'woocommerce' ) . ' ###',
 			'',
-			__( 'AI shopping (UCP)', 'woocommerce' ) . ': ' . ( $statuses[ $this->ucp_switch->status() ] ?? '' ),
+			__( 'AI shopping', 'woocommerce' ) . ': ' . ( $statuses[ $this->ucp_switch->status() ] ?? '' ),
 			__( 'Store visibility', 'woocommerce' ) . ': ' . $visibility,
 		);
 		if ( null !== $report ) {
@@ -182,6 +182,7 @@ class SupportReport {
 	 */
 	private function store_checks( ?array $report, array $live ): array {
 		$steps   = array_column( $live, 'ok', 'id' );
+		$names   = array_column( $live, 'name', 'id' );
 		$lines   = array( '### ' . __( 'Setup steps', 'woocommerce' ) . ' ###', '' );
 		$scanned = array_slice( $this->agent_readiness->get_store_checks( $report, $live ), count( $live ) );
 		foreach ( $live as $check ) {
@@ -199,10 +200,10 @@ class SupportReport {
 			$line = self::check_line( $check, null !== $copy ? $copy['found'] : (string) $check['why'] );
 			$step = ReadinessCheckPage::SAME_CAUSE[ $check['id'] ] ?? '';
 			if ( false === ( $steps[ $step ] ?? null ) ) {
-				/* translators: %s: setup step id, such as search_visible. */
-				$line .= ' ' . sprintf( __( '(hidden while %s fails)', 'woocommerce' ), $step );
+				/* translators: %s: name of the setup step, such as "Search engines can index the store". */
+				$line .= ' ' . sprintf( __( '(not shown on the page until “%s” is fixed)', 'woocommerce' ), (string) ( $names[ $step ] ?? $step ) );
 			} elseif ( 'ucp' === $check['blocks'] && ! UcpUtils::is_enabled() ) {
-				$line .= ' ' . __( '(hidden while AI shopping is off)', 'woocommerce' );
+				$line .= ' ' . __( '(not shown on the page while AI shopping is off)', 'woocommerce' );
 			}
 			$lines[] = $line;
 		}
@@ -217,7 +218,7 @@ class SupportReport {
 	 */
 	private static function check_line( array $check, string $found ): string {
 		if ( ! empty( $check['pending'] ) ) {
-			$status = __( 'Coming soon', 'woocommerce' );
+			$status = __( 'Not available yet', 'woocommerce' );
 		} elseif ( null === $check['ok'] ) {
 			$status = __( 'Couldn’t check', 'woocommerce' );
 		} else {
@@ -227,14 +228,14 @@ class SupportReport {
 		if ( false === $check['ok'] && empty( $check['pending'] ) ) {
 			$line .= ': ' . trim( $found );
 			if ( ! empty( $check['conflict'] ) ) {
-				$line .= ' ' . __( '(likely conflict)', 'woocommerce' );
+				$line .= ' ' . __( '(Likely conflict)', 'woocommerce' );
 			}
 		}
 		if ( '' !== ( $check['seen_at'] ?? '' ) ) {
-			$line .= ' ' . __( 'Seen at', 'woocommerce' ) . ': ' . $check['seen_at'];
+			$line .= ' ' . __( 'Found on', 'woocommerce' ) . ': ' . $check['seen_at'];
 		}
 		if ( '' !== ( $check['source'] ?? '' ) && true !== $check['ok'] ) {
-			$line .= ' ' . __( 'Store answered', 'woocommerce' ) . ': ' . $check['source'];
+			$line .= ' ' . __( 'Store response', 'woocommerce' ) . ': ' . $check['source'];
 		}
 		return $line;
 	}
@@ -252,8 +253,8 @@ class SupportReport {
 				continue;
 			}
 			$lines[] = sprintf(
-				/* translators: 1: channel name, such as ChatGPT, 2: channel id, 3: products that can be listed, 4: products that can't, 5: products listed with gaps. */
-				__( '%1$s (%2$s): %3$s can be listed, %4$s can’t, %5$s with gaps', 'woocommerce' ),
+				/* translators: 1: AI shopping app, such as ChatGPT, 2: its id, 3: products that can be listed, 4: products that can't, 5: products listed with missing details. */
+				__( '%1$s (%2$s): %3$s can be listed, %4$s can’t be listed, %5$s listed with missing details', 'woocommerce' ),
 				(string) ( $channel['name'] ?? $id ),
 				(string) $id,
 				number_format_i18n( (int) ( $channel['listable'] ?? 0 ) ),

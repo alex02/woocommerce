@@ -3,7 +3,7 @@
  */
 import { useState } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
-import { Button } from '@wordpress/components';
+import { Button } from '@wordpress/ui';
 import { __ } from '@wordpress/i18n';
 
 export const SUPPORT_REPORT_PATH = '/wc/v3/agent-readiness/support-report';
@@ -48,9 +48,8 @@ export const SupportDownload = ( {
 
 	return (
 		<Button
-			variant="secondary"
-			size="compact"
-			isBusy={ busy }
+			variant="outline"
+			loading={ busy }
 			disabled={ busy }
 			onClick={ download }
 		>

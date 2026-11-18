@@ -169,7 +169,7 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 		$this->assertMatchesRegularExpression( '/^ai-sales-readiness-[a-z0-9.-]+-\d{4}-\d{2}-\d{2}\.txt$/', $data['filename'] );
 		$this->assertStringContainsString( 'Site: ' . home_url(), $data['text'] );
 		$this->assertStringContainsString( 'WooCommerce version: ' . WC_VERSION, $data['text'] );
-		$this->assertStringContainsString( 'Last check: Not checked yet', $data['text'] );
+		$this->assertStringContainsString( 'Last checked: Not checked yet', $data['text'] );
 		$this->assertStringContainsString( "### Store checks ###\n\nNot checked yet", $data['text'] );
 		$this->assertStringContainsString( '(launched)', $data['text'], 'Setup steps are read now, so they show before the first check.' );
 		$this->assertStringNotContainsString( '### Product checks ###', $data['text'] );
@@ -242,15 +242,15 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 
 		$text = $this->server->dispatch( new WP_REST_Request( 'GET', '/wc/v3/agent-readiness/support-report' ) )->get_data()['text'];
 
-		$this->assertStringContainsString( 'Last check: 2026-11-18T10:42:00+00:00', $text );
+		$this->assertStringContainsString( 'Last checked: 2026-11-18T10:42:00+00:00', $text );
 		$this->assertStringContainsString( 'Check status: Finished', $text );
 		$this->assertStringContainsString( 'Hidden: 1', $text );
 		$this->assertStringContainsString( 'Not supported: 2', $text );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] [^\n]*\(search_visible\): \S/m', $text, 'A failing setup step says what was found.' );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt \(llms_txt_present\): \S[^\n]*Store answered: 404 text\/html$/m', $text );
+		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt \(llms_txt_present\): \S[^\n]*Store response: 404 text\/html$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Passed\] Open Graph tags \(open_graph_tags\)$/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Failed\] No noindex \(no_noindex_directives\)[^\n]*\(hidden while search_visible fails\)$/m', $text );
-		$this->assertStringContainsString( 'ChatGPT (chatgpt): 1 can be listed, 2 can’t, 1 with gaps', $text );
+		$this->assertMatchesRegularExpression( '/^\[Failed\] No noindex \(no_noindex_directives\)[^\n]*\(not shown on the page until “[^”]+” is fixed\)$/m', $text );
+		$this->assertStringContainsString( 'ChatGPT (chatgpt): 1 can be listed, 2 can’t be listed, 1 listed with missing details', $text );
 		$this->assertStringContainsString( '[Failed] Products with no brand (missing_brand): 2 products. Product IDs: 12, 34', $text );
 		$this->assertStringContainsString( '[Passed] Products with no image (missing_images)', $text );
 	}
