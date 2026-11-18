@@ -528,6 +528,9 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 	 */
 	public function test_output_groups_summary_and_conflict(): void {
 		$this->make_every_step_pass();
+		$mug = WC_Helper_Product::create_simple_product();
+		$mug->set_name( 'Blue mug' );
+		$mug->save();
 		$row = static fn( string $id, ?bool $ok, bool $conflict = false ): array => array(
 			'id'       => $id,
 			'ok'       => $ok,
@@ -549,6 +552,7 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 						$row( 'product_jsonld_present', false, true ),
 						array(
 							'seen_at' => 'https://example.org/product/mug/',
+							'product' => $mug->get_id(),
 							// A report stored before plugin names were dropped.
 							'plugins' => array( 'Yoast SEO', 'Rank Math SEO' ),
 						)
@@ -586,7 +590,7 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 		);
 		$conflict = $sections['understand']['rows'][0];
 		$this->assertSame( 'Let AI assistants read your product details', $conflict['title'], 'A failing check is headed by what to do' );
-		$this->assertStringStartsWith( 'Your newest product page doesn’t include these details', $conflict['text'], 'then why it matters and what the check found' );
+		$this->assertStringStartsWith( 'On the Blue mug page, the name, price, and stock aren’t in the page code', $conflict['text'], 'then why it matters and what the check found, naming the product from the stored report' );
 		$this->assertSame( 'Check their settings for WooCommerce structured data.', $conflict['fix'], 'and the fix, since it has one' );
 		$this->assertNull( $conflict['badge'], 'A likely conflict has no badge; the page it was seen on says where' );
 		$this->assertSame(

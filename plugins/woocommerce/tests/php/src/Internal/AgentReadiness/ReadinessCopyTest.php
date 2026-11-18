@@ -14,22 +14,12 @@ use WC_Unit_Test_Case;
 class ReadinessCopyTest extends WC_Unit_Test_Case {
 
 	/**
-	 * Checks that wait for output WooCommerce doesn't build yet, so Sales readiness doesn't show them.
-	 *
-	 * @return array<int, string>
-	 */
-	private static function pending(): array {
-		return ( new \ReflectionClassConstant( StoreOutputChecks::class, 'PENDING' ) )->getValue();
-	}
-
-
-	/**
 	 * @testdox Every store check Sales readiness shows has copy, headed by what to do and saying what the scan found.
 	 */
 	public function test_every_store_check_has_copy(): void {
 		$checks = new \ReflectionMethod( StoreOutputChecks::class, 'checks' );
 		$checks->setAccessible( true );
-		$ids = array_diff( array_column( $checks->invoke( wc_get_container()->get( StoreOutputChecks::class ) ), 'id' ), self::pending() );
+		$ids = array_column( $checks->invoke( wc_get_container()->get( StoreOutputChecks::class ) ), 'id' );
 
 		$this->assertNotEmpty( $ids );
 		foreach ( $ids as $id ) {
@@ -40,6 +30,39 @@ class ReadinessCopyTest extends WC_Unit_Test_Case {
 			$this->assertNotSame( '', $copy['found'], "{$id} says why it matters while it fails" );
 		}
 		$this->assertNull( ReadinessCopy::store_check( 'not_a_check' ), 'A check without copy keeps the report\'s' );
+	}
+
+	/**
+	 * @testdox Each found line that names a product is for a check with copy, names the product once, and is used when a name is given.
+	 */
+	public function test_named_found_lines_name_the_product(): void {
+		$named = new \ReflectionMethod( ReadinessCopy::class, 'named_found' );
+		$named->setAccessible( true );
+		$checks = new \ReflectionMethod( StoreOutputChecks::class, 'checks' );
+		$checks->setAccessible( true );
+		$ids = array_column( $checks->invoke( wc_get_container()->get( StoreOutputChecks::class ) ), 'id' );
+
+		$with_names = array_filter( $ids, static fn( string $id ): bool => null !== $named->invoke( null, $id ) );
+		$this->assertGreaterThanOrEqual( 10, count( $with_names ) );
+		foreach ( $with_names as $id ) {
+			$this->assertSame( 1, substr_count( (string) $named->invoke( null, $id ), '%s' ), $id );
+			$this->assertStringContainsString( 'Blue hoodie', ReadinessCopy::store_check( $id, '', 'Blue hoodie' )['found'], $id );
+			$this->assertStringNotContainsString( 'Blue hoodie', ReadinessCopy::store_check( $id )['found'], "{$id} without a name" );
+		}
+	}
+
+	/**
+	 * @testdox A broken llms.txt link is named, and the fix says where to change it for each place the file comes from.
+	 */
+	public function test_broken_llms_txt_link_names_the_link_and_fits_the_fix(): void {
+		$copy = ReadinessCopy::store_check( 'llms_txt_links_resolve', 'file', '', 'https://example.com/old-sale/' );
+		$this->assertStringContainsString( 'doesn’t open: example.com/old-sale/.', $copy['found'] );
+		$this->assertStringContainsString( 'llms.txt file in your site’s root folder', $copy['fix'] );
+		$this->assertStringContainsString( 'plugin that adds your llms.txt file', ReadinessCopy::store_check( 'llms_txt_links_resolve', 'other' )['fix'] );
+		$this->assertStringContainsString( 'WooCommerce adds these links', ReadinessCopy::store_check( 'llms_txt_links_resolve', 'woocommerce' )['fix'] );
+		$general = ReadinessCopy::store_check( 'llms_txt_links_resolve' );
+		$this->assertStringStartsWith( 'Some links in the file', $general['found'], 'Without a link, the general line' );
+		$this->assertSame( 'Update or remove the broken links in the file.', $general['fix'] );
 	}
 
 	/**
@@ -72,7 +95,7 @@ class ReadinessCopyTest extends WC_Unit_Test_Case {
 	public function test_every_store_check_has_a_fix_line(): void {
 		$checks = new \ReflectionMethod( StoreOutputChecks::class, 'checks' );
 		$checks->setAccessible( true );
-		foreach ( array_diff( array_column( $checks->invoke( wc_get_container()->get( StoreOutputChecks::class ) ), 'id' ), self::pending() ) as $id ) {
+		foreach ( array_column( $checks->invoke( wc_get_container()->get( StoreOutputChecks::class ) ), 'id' ) as $id ) {
 			$this->assertNotSame( '', ReadinessCopy::store_check( $id )['fix'] ?? '', $id );
 		}
 	}

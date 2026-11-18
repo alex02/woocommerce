@@ -374,11 +374,21 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 	}
 
 	/**
+	 * The name of the product a page check failed on, '' when there is none or it no longer exists.
+	 *
+	 * @param int $product_id Product ID from the report.
+	 */
+	private static function product_name( int $product_id ): string {
+		$product = $product_id > 0 ? wc_get_product( $product_id ) : null;
+		return $product instanceof \WC_Product ? wp_strip_all_tags( html_entity_decode( $product->get_name(), ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) : '';
+	}
+
+	/**
 	 * What a failing store check says: what to do, why it matters and what was found, the fix line,
 	 * and where to fix it. A setup step is worded as in Status; a scanned check takes its copy from
 	 * ReadinessCopy, or from the report for a check that has none there.
 	 *
-	 * @param array{id:string,name:string,label?:string,why:string,fix?:string,fix_url:string,conflict?:bool,source?:string} $check Store check.
+	 * @param array{id:string,name:string,label?:string,why:string,fix?:string,fix_url:string,conflict?:bool,source?:string,product?:int,seen_at?:string} $check Store check.
 	 * @return array{title:string,text:string,fix:string,url:string,link?:string,tool?:array{href:string,text:string}|null}
 	 */
 	private static function failing_copy( array $check ): array {
@@ -392,7 +402,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 				'link'  => $action[3],
 			);
 		}
-		$copy = ReadinessCopy::store_check( $check['id'], (string) ( $check['source'] ?? '' ) );
+		$copy = ReadinessCopy::store_check( $check['id'], (string) ( $check['source'] ?? '' ), self::product_name( (int) ( $check['product'] ?? 0 ) ), (string) ( $check['seen_at'] ?? '' ) );
 		if ( null !== $copy ) {
 			return array(
 				'title' => $copy['action'],
@@ -481,7 +491,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 			array_filter(
 				$scanned,
 				static function ( array $check ) use ( $results, $steps ): bool {
-					if ( ! empty( $check['pending'] ) || ( ! UcpUtils::is_enabled() && 'ucp' === $check['blocks'] ) ) {
+					if ( ! empty( $check['pending'] ) || ! empty( $check['skipped'] ) || ( ! UcpUtils::is_enabled() && 'ucp' === $check['blocks'] ) ) {
 						return false;
 					}
 					if ( false === ( $steps[ self::SAME_CAUSE[ $check['id'] ] ?? '' ] ?? null ) ) {
@@ -1076,7 +1086,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 				'id'       => $id,
 				'title'    => $group[0],
 				'badge'    => self::badge_data( $cant && array() === $rows ? array( 'off', __( 'Couldn’t check', 'woocommerce' ) ) : self::group_badge( $checks ) ),
-				'note'     => 'access' === $id && ! UcpUtils::is_enabled() ? __( 'Some checks only run when AI shopping is on, like whether AI assistants can connect to your store and send shoppers to your checkout.', 'woocommerce' ) : null,
+				'note'     => 'access' === $id && ! UcpUtils::is_enabled() ? __( 'Some checks only run when AI shopping is on, like whether AI assistants can connect to your store and send shoppers to your checkout.', 'woocommerce' ) : ( 'understand' === $id ? self::sample_note( $report ) : null ),
 				'channels' => array(),
 				'rows'     => $cant ? array_merge( $rows, array( self::cant_check_row( $launched ) ) ) : $rows,
 				'folded'   => self::check_rows( array_values( $folded ), $launched ),
@@ -1084,6 +1094,20 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 			);
 		}
 		return $sections;
+	}
+
+	/**
+	 * Which product pages the Product details checks read. Null for a report from before they read several.
+	 *
+	 * @param array<string, mixed> $report Stored report.
+	 */
+	private static function sample_note( array $report ): ?string {
+		if ( ! array_key_exists( 'pages_best_seller', $report ) ) {
+			return null;
+		}
+		return $report['pages_best_seller']
+			? __( 'These checks look at a selection of your products, including your best seller. If one product has an issue, others may too.', 'woocommerce' )
+			: __( 'These checks look at a selection of your products, including your newest one. If one product has an issue, others may too.', 'woocommerce' );
 	}
 
 	/**

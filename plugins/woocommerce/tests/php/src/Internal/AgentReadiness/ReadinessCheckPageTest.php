@@ -159,4 +159,42 @@ class ReadinessCheckPageTest extends WC_Unit_Test_Case {
 		$this->assertSame( 'Allow guest checkout', $rows['guest_checkout']['title'], 'The step title from the AI shopping checklist, not the report name' );
 		$this->assertSame( 'Guest checkout lets shoppers from AI assistants pay without creating an account.', $rows['guest_checkout']['text'] );
 	}
+
+	/**
+	 * @testdox Product details says which product pages it read, and says nothing for a report from before it read several.
+	 */
+	public function test_product_details_note_says_which_pages_were_read(): void {
+		$note = new \ReflectionMethod( ReadinessCheckPage::class, 'sample_note' );
+		$note->setAccessible( true );
+
+		$this->assertSame( 'These checks look at a selection of your products, including your best seller. If one product has an issue, others may too.', $note->invoke( null, array( 'pages_best_seller' => true ) ) );
+		$this->assertSame( 'These checks look at a selection of your products, including your newest one. If one product has an issue, others may too.', $note->invoke( null, array( 'pages_best_seller' => false ) ) );
+		$this->assertNull( $note->invoke( null, array( 'store_checks' => array() ) ) );
+	}
+
+	/**
+	 * @testdox A failing page check names the product whose page failed, and falls back to "a product page" once it is gone.
+	 */
+	public function test_failing_page_check_names_its_product(): void {
+		$failing_copy = new \ReflectionMethod( ReadinessCheckPage::class, 'failing_copy' );
+		$failing_copy->setAccessible( true );
+		$product = \WC_Helper_Product::create_simple_product();
+		$product->set_name( 'Blue hoodie & cap' );
+		$product->save();
+		$check = array(
+			'id'       => 'product_jsonld_present',
+			'ok'       => false,
+			'name'     => 'name',
+			'label'    => 'label',
+			'why'      => 'why',
+			'fix_url'  => '',
+			'conflict' => false,
+			'product'  => $product->get_id(),
+		);
+
+		$this->assertStringStartsWith( 'On the Blue hoodie & cap page, the name, price, and stock aren’t in the page code', $failing_copy->invoke( null, $check )['text'] );
+
+		$product->delete( true );
+		$this->assertStringStartsWith( 'A product page doesn’t include these details', $failing_copy->invoke( null, $check )['text'] );
+	}
 }

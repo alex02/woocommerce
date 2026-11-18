@@ -4,6 +4,7 @@ declare( strict_types = 1 );
 namespace Automattic\WooCommerce\Internal\AgentReadiness;
 
 use Automattic\WooCommerce\Enums\ProductStatus;
+use Automattic\WooCommerce\Enums\ProductType;
 use Automattic\WooCommerce\Internal\ComingSoon\ComingSoonHelper;
 use Automattic\WooCommerce\StoreApi\Utilities\Ucp\Utils as UcpUtils;
 
@@ -55,7 +56,7 @@ class StoreOutputChecks {
 	 * A likely conflict also names the address where it was seen. It doesn't name a plugin: any list of
 	 * plugins goes stale, and several can change the same output.
 	 *
-	 * @return array<int, array{id:string,ok:bool|null,blocks:string,group:string,level:string,name:string,label:string,why:string,fix:string,fix_url:string,conflict:bool,pending:bool,seen_at:string,source:string}>
+	 * @return array<int, array{id:string,ok:bool|null,blocks:string,group:string,level:string,name:string,label:string,why:string,fix:string,fix_url:string,conflict:bool,pending:bool,seen_at:string,source:string,product:int}>
 	 */
 	public function all(): array {
 		return $this->all_for( $this->responses() );
@@ -67,7 +68,7 @@ class StoreOutputChecks {
 	 * @since 11.4.0
 	 *
 	 * @param StoreResponses $responses Responses of the scan.
-	 * @return array<int, array{id:string,ok:bool|null,blocks:string,group:string,level:string,name:string,label:string,why:string,fix:string,fix_url:string,conflict:bool,pending:bool,seen_at:string,source:string}>
+	 * @return array<int, array{id:string,ok:bool|null,blocks:string,group:string,level:string,name:string,label:string,why:string,fix:string,fix_url:string,conflict:bool,pending:bool,seen_at:string,source:string,product:int}>
 	 */
 	public function all_for( StoreResponses $responses ): array {
 		// The home page first: when it can't be reached, no other request is made.
@@ -77,9 +78,11 @@ class StoreOutputChecks {
 			if ( StoreConditions::is_off( $check['id'] ) ) {
 				continue;
 			}
-			$pending = in_array( $check['id'], self::PENDING, true ) || ( 'ucp_checkout' === $check['id'] && ! StoreConditions::serves_ucp_checkout() );
+			// The UCP checkout check waits until this WooCommerce serves UCP checkout; it is reported as pending, not failed.
+			$pending = 'ucp_checkout' === $check['id'] && ! StoreConditions::serves_ucp_checkout();
+			$failed  = null;
 			try {
-				$ok = $pending ? null : ( $check['test'] )( $responses );
+				$ok = $pending ? null : self::on_sample( $check['test'], $responses, $failed );
 			} catch ( \Throwable $e ) {
 				// Reported as couldn't check, so one broken check doesn't stop the scan.
 				$ok = null;
@@ -88,6 +91,8 @@ class StoreOutputChecks {
 					array( 'source' => 'agent-readiness' )
 				);
 			}
+			// Nothing to check when no sampled product has the detail, such as a barcode: not shown, rather than "couldn't check".
+			$skipped  = null === $ok && isset( $check['applies'] ) && array() === array_filter( $responses->products(), $check['applies'] );
 			$conflict = false === $ok && ! empty( $check['conflict'] );
 			$source   = '';
 			if ( 'ucp_profile_version' === $check['id'] && false === $ok ) {
@@ -98,6 +103,12 @@ class StoreOutputChecks {
 			}
 			if ( 'llms_txt_present' === $check['id'] ) {
 				$source = $this->llms_txt_source( $responses, $ok );
+			}
+			$seen_at = $conflict ? self::seen_at( (string) ( $check['seen_at'] ?? '' ), $responses ) : '';
+			if ( 'llms_txt_links_resolve' === $check['id'] && false === $ok ) {
+				// Where the file comes from picks the fix, and the broken link is named.
+				$source  = $this->llms_txt_source( $responses, true );
+				$seen_at = $this->broken_llms_link;
 			}
 			$results[] = array(
 				'id'       => $check['id'],
@@ -112,23 +123,55 @@ class StoreOutputChecks {
 				'fix_url'  => $check['fix_url'],
 				'conflict' => $conflict,
 				'pending'  => $pending,
-				'seen_at'  => $conflict ? self::seen_at( (string) ( $check['seen_at'] ?? '' ), $responses ) : '',
+				'skipped'  => $skipped,
+				'seen_at'  => $seen_at,
 				'source'   => $source,
+				// The product whose page failed, 0 when the check doesn't read product pages or didn't fail on one.
+				'product'  => null === $failed ? 0 : $failed->get_id(),
 			);
+			$responses->focus( null );
 		}
 		return $results;
 	}
 
 	/**
-	 * Checks for output WooCommerce doesn't build yet. They don't run and are reported as
-	 * pending, not failed; remove the entry when the output ships. The output is built by
-	 * WOOPRD-3908 (shipping) and WOOPRD-3918 (buy action). The UCP checkout check is pending
-	 * until this WooCommerce serves UCP checkout (StoreConditions::serves_ucp_checkout()).
+	 * Run a check on each product page of the sample, up to the first one that fails. A check that
+	 * doesn't read a product page runs once. Passes when a page passed and none failed, null when
+	 * no page could be checked. The failing product stays in focus, so seen_at() names its page.
+	 * It is named only when the check passes without it: otherwise another page, such as the home page, failed.
+	 *
+	 * @param callable         $test      Check test.
+	 * @param StoreResponses   $responses Store responses.
+	 * @param \WC_Product|null $failed    Set to the product whose page failed.
 	 */
-	private const PENDING = array(
-		'product_shipping_schema',
-		'product_buy_action_schema',
-	);
+	private static function on_sample( callable $test, StoreResponses $responses, ?\WC_Product &$failed ): ?bool {
+		$sample = $responses->products();
+		$responses->focus( $sample[0] ?? null );
+		$responses->forget_product_read();
+		$ok = $test( $responses );
+		if ( ! $responses->product_was_read() || array() === $sample ) {
+			return $ok;
+		}
+		foreach ( array_slice( $sample, 1 ) as $product ) {
+			if ( false === $ok ) {
+				break;
+			}
+			$responses->focus( $product );
+			$next = $test( $responses );
+			$ok   = false === $next || null === $ok ? $next : $ok;
+		}
+		if ( false === $ok ) {
+			$product = $responses->product();
+			$responses->without_product( true );
+			try {
+				$elsewhere = false === $test( $responses );
+			} finally {
+				$responses->without_product( false );
+			}
+			$failed = $elsewhere ? null : $product;
+		}
+		return $ok;
+	}
 
 	private const MAX_LISTED_SITEMAPS = 5;
 
@@ -140,6 +183,13 @@ class StoreOutputChecks {
 	private const ANSWER_STATUSES = array( 200, 404, 410 );
 
 	private const MAX_LLMS_TXT_LINKS = 5;
+
+	/**
+	 * The llms.txt link the last links check found broken, or ''.
+	 *
+	 * @var string
+	 */
+	private string $broken_llms_link = '';
 
 	/**
 	 * Organization and the subtypes stores use for themselves.
@@ -194,10 +244,10 @@ class StoreOutputChecks {
 				'group'   => 'understand',
 				'test'    => fn( StoreResponses $responses ): ?bool => $this->with_products( $responses, static fn( array $products ): ?bool => array() === $products ? null : self::has_required_fields( $products ) ),
 				'blocks'  => 'discovery',
-				'name'    => __( 'Product structured data has a name, image and offer', 'woocommerce' ),
-				'label'   => __( 'Product structured data is missing a name, image or offer', 'woocommerce' ),
-				'why'     => __( 'Without these, agents and search engines can\'t show the product as something to buy.', 'woocommerce' ),
-				'fix'     => __( 'Give the product a name, an image and a price. If it has them, check the product schema settings in your SEO plugin.', 'woocommerce' ),
+				'name'    => __( 'Product structured data has a name and image', 'woocommerce' ),
+				'label'   => __( 'Product structured data is missing a name or image', 'woocommerce' ),
+				'why'     => __( 'Without these, agents and search engines can\'t show the product.', 'woocommerce' ),
+				'fix'     => __( 'Give the product a name and an image. If it has them, check the product schema settings in your SEO plugin.', 'woocommerce' ),
 				'fix_url' => '',
 			),
 			array(
@@ -357,10 +407,10 @@ class StoreOutputChecks {
 			array(
 				'id'      => 'viewport_meta',
 				'group'   => 'understand',
-				'test'    => fn( StoreResponses $responses ): ?bool => $this->on_home_page( $responses, static fn( string $html ): bool => PageMarkup::has_meta( $html, 'name', 'viewport' ) ),
+				'test'    => fn( StoreResponses $responses ): ?bool => $this->on_pages( $responses, static fn( string $html ): bool => PageMarkup::has_meta( $html, 'name', 'viewport' ) ),
 				'blocks'  => 'discovery',
-				'name'    => __( 'Home page sets a viewport', 'woocommerce' ),
-				'label'   => __( 'Home page has no viewport tag', 'woocommerce' ),
+				'name'    => __( 'Home and product pages set a viewport', 'woocommerce' ),
+				'label'   => __( 'A home or product page has no viewport tag', 'woocommerce' ),
 				'why'     => __( 'Browser agents load your pages at a phone or desktop size; without a viewport tag the layout can break.', 'woocommerce' ),
 				'fix'     => __( 'Use a theme that adds a viewport meta tag, or ask its developer.', 'woocommerce' ),
 				'fix_url' => '',
@@ -368,10 +418,10 @@ class StoreOutputChecks {
 			array(
 				'id'      => 'html_lang_and_charset',
 				'group'   => 'understand',
-				'test'    => fn( StoreResponses $responses ): ?bool => self::has_lang_and_charset( $responses->home_page() ),
+				'test'    => fn( StoreResponses $responses ): ?bool => $this->on_pages( $responses, static fn( string $html, array $headers ): bool => self::has_lang_and_charset( $html, $headers ) ),
 				'blocks'  => 'discovery',
-				'name'    => __( 'Home page declares its language and encoding', 'woocommerce' ),
-				'label'   => __( 'Home page doesn\'t declare its language or encoding', 'woocommerce' ),
+				'name'    => __( 'Home and product pages declare their language and encoding', 'woocommerce' ),
+				'label'   => __( 'A home or product page doesn\'t declare its language or encoding', 'woocommerce' ),
 				'why'     => __( 'Agents use the language to answer shoppers in theirs, and the encoding to read names and prices without garbled text.', 'woocommerce' ),
 				'fix'     => __( 'Use a theme that sets the lang attribute and a charset meta tag, or ask its developer.', 'woocommerce' ),
 				'fix_url' => '',
@@ -415,6 +465,7 @@ class StoreOutputChecks {
 				'id'       => 'product_gtin_jsonld',
 				'group'    => 'understand',
 				'test'     => fn( StoreResponses $responses ): ?bool => $this->with_products( $responses, static fn( array $products ): ?bool => array() === $products ? null : self::served_gtin_ok( $products, $responses->product() ) ),
+				'applies'  => static fn( \WC_Product $product ): bool => ProductFields::needs_identifiers( $product ) && ProductFields::is_valid_gtin( (string) preg_replace( '/\D/', '', (string) $product->get_global_unique_id() ) ),
 				'blocks'   => 'discovery',
 				'name'     => __( 'Product structured data has a valid GTIN', 'woocommerce' ),
 				'label'    => __( 'Product structured data has no valid GTIN', 'woocommerce' ),
@@ -428,6 +479,7 @@ class StoreOutputChecks {
 				'id'       => 'product_brand_jsonld',
 				'group'    => 'understand',
 				'test'     => fn( StoreResponses $responses ): ?bool => $this->with_products( $responses, static fn( array $products ): ?bool => array() === $products ? null : self::served_brand_ok( $products, $responses->product() ) ),
+				'applies'  => static fn( \WC_Product $product ): bool => taxonomy_exists( 'product_brand' ) && is_array( get_the_terms( $product->get_id(), 'product_brand' ) ),
 				'blocks'   => 'discovery',
 				'name'     => __( 'Product structured data has a brand', 'woocommerce' ),
 				'label'    => __( 'Product structured data has no brand', 'woocommerce' ),
@@ -760,13 +812,14 @@ class StoreOutputChecks {
 	}
 
 	/**
-	 * Whether the Product items give a name, an image and an offer, from one source or several.
+	 * Whether the Product items give a name and an image, from one source or several. The price and
+	 * stock are product_offer_jsonld's.
 	 *
 	 * @param array<int, array<string, mixed>> $products Product items.
 	 */
 	private static function has_required_fields( array $products ): bool {
 		$products = self::with_variants( $products );
-		foreach ( array( 'name', 'image', 'offers' ) as $field ) {
+		foreach ( array( 'name', 'image' ) as $field ) {
 			if ( array() === array_filter( $products, static fn( array $product ): bool => ! empty( $product[ $field ] ) ) ) {
 				return false;
 			}
@@ -977,15 +1030,17 @@ class StoreOutputChecks {
 			return $has;
 		}
 		// Links with a query string are skipped: one such as ?add-to-cart=12 would act on the store.
-		$links   = array_map( static fn( string $link ): string => explode( '#', $link, 2 )[0], $links );
-		$links   = array_filter( $links, static fn( string $link ): bool => $responses->is_store_url( $link ) && ! str_contains( $link, '?' ) );
-		$links   = array_slice( array_values( array_unique( $links ) ), 0, self::MAX_LLMS_TXT_LINKS );
-		$unknown = false;
+		$links                  = array_map( static fn( string $link ): string => explode( '#', $link, 2 )[0], $links );
+		$links                  = array_filter( $links, static fn( string $link ): bool => $responses->is_store_url( $link ) && ! str_contains( $link, '?' ) );
+		$links                  = array_slice( array_values( array_unique( $links ) ), 0, self::MAX_LLMS_TXT_LINKS );
+		$unknown                = false;
+		$this->broken_llms_link = '';
 		foreach ( $links as $link ) {
 			$response = $responses->get( $link );
 			if ( null === $response || self::blocked( $response['status'] ) ) {
 				$unknown = true;
 			} elseif ( $response['status'] >= 400 ) {
+				$this->broken_llms_link = $link;
 				return false;
 			}
 		}
@@ -1150,13 +1205,17 @@ class StoreOutputChecks {
 	}
 
 	/**
-	 * Whether the scanned product needs shipping. A product that doesn't ship has no shipping details to give.
+	 * Whether WooCommerce gives the scanned product shipping details: shipping is on and the product
+	 * ships. A variable product gets them only for a selected variation, so its page has none.
 	 *
 	 * @param StoreResponses $responses Store responses.
 	 */
 	private static function ships( StoreResponses $responses ): bool {
 		$product = $responses->product();
-		return null === $product || $product->needs_shipping();
+		if ( null === $product ) {
+			return true;
+		}
+		return wc_shipping_enabled() && $product->needs_shipping() && ! $product->is_type( array( ProductType::VARIABLE, ProductType::GROUPED, ProductType::EXTERNAL ) );
 	}
 
 	/**
@@ -1287,7 +1346,9 @@ class StoreOutputChecks {
 				}
 			}
 		}
-		return null !== $scanned && $scanned->is_type( 'variable' ) ? null : false;
+		// WooCommerce links only a simple product that can be bought now: a variable product only for a selected variation.
+		$linkable = null === $scanned || ( $scanned->is_type( ProductType::SIMPLE ) && $scanned->is_purchasable() && $scanned->is_in_stock() && $scanned->has_enough_stock( 1 ) );
+		return $linkable ? false : null;
 	}
 
 	/**
@@ -1685,18 +1746,16 @@ class StoreOutputChecks {
 
 	/**
 	 * Whether the page's html element has a lang attribute and the page declares its encoding,
-	 * in a meta tag or the Content-Type header. Null when the page didn't load.
+	 * in a meta tag or the Content-Type header.
 	 *
-	 * @param array{status:int,body:string,headers:array<string,string>}|null $page Page.
+	 * @param string                $html    Page HTML.
+	 * @param array<string, string> $headers Response headers.
 	 */
-	private static function has_lang_and_charset( ?array $page ): ?bool {
-		if ( null === $page ) {
-			return null;
-		}
-		$tags    = new \WP_HTML_Tag_Processor( $page['body'] );
+	private static function has_lang_and_charset( string $html, array $headers ): bool {
+		$tags    = new \WP_HTML_Tag_Processor( $html );
 		$lang    = $tags->next_tag( array( 'tag_name' => 'html' ) ) && '' !== trim( (string) $tags->get_attribute( 'lang' ) );
-		$charset = false !== stripos( $page['headers']['content-type'] ?? '', 'charset=' );
-		$tags    = new \WP_HTML_Tag_Processor( $page['body'] );
+		$charset = false !== stripos( $headers['content-type'] ?? '', 'charset=' );
+		$tags    = new \WP_HTML_Tag_Processor( $html );
 		while ( ! $charset && $tags->next_tag( array( 'tag_name' => 'meta' ) ) ) {
 			$charset = null !== $tags->get_attribute( 'charset' ) || false !== stripos( (string) $tags->get_attribute( 'content' ), 'charset=' );
 		}
@@ -1961,8 +2020,10 @@ class StoreOutputChecks {
 	}
 
 	/**
-	 * Whether the page of a published product with reviews has a rating in its JSON-LD. True when
-	 * reviews are off or no product has any, since there is nothing to mark up.
+	 * Whether the sampled product's page has its rating in its JSON-LD. A sampled product without
+	 * ratings gives no answer. When no sampled product has ratings, the newest product with ratings
+	 * is checked instead, and stays in focus so a failure names it. True when ratings are off or no
+	 * product has any, since there is nothing to mark up.
 	 *
 	 * @param StoreResponses $responses Store responses.
 	 */
@@ -1974,6 +2035,16 @@ class StoreOutputChecks {
 		// WooCommerce prints a rating only when ratings are on and the product has rated reviews; the rating count is stored per star, the average as a number.
 		if ( ! wc_review_ratings_enabled() ) {
 			return true;
+		}
+		$rated = static fn( \WC_Product $product ): bool => (float) $product->get_average_rating() > 0;
+		if ( array() !== array_filter( $responses->products(), $rated ) ) {
+			$product = $responses->product();
+			return null !== $product && $rated( $product ) ? self::rating_marked_up( $responses ) : null;
+		}
+		// The fallback page is the same for every sampled page, so it is checked on the first pass only.
+		$first = $responses->products()[0] ?? null;
+		if ( null !== $first && $responses->product() !== $first ) {
+			return null;
 		}
 		// wc_get_products() ignores meta_query, so the reviewed product is looked up as a post.
 		// The same products the scan checks: Search results only included, Hidden left out.
@@ -2012,14 +2083,20 @@ class StoreOutputChecks {
 		if ( null === $product ) {
 			return true;
 		}
-		$sampled = $responses->product();
-		if ( null !== $sampled && $sampled->get_id() === $product->get_id() ) {
-			$page = $responses->product_page();
-		} else {
-			$page = $responses->get( (string) $product->get_permalink() );
-			if ( null === $page || 200 !== $page['status'] ) {
-				return null;
-			}
+		$responses->focus( $product );
+		return self::rating_marked_up( $responses );
+	}
+
+	/**
+	 * Whether the focused product's page has its rating in its JSON-LD. Null when the page didn't load or was cut off.
+	 *
+	 * @param StoreResponses $responses Store responses.
+	 */
+	private static function rating_marked_up( StoreResponses $responses ): ?bool {
+		$page    = $responses->product_page();
+		$product = $responses->product();
+		if ( null === $page || null === $product ) {
+			return null;
 		}
 		foreach ( self::naming( JsonLd::items( $page['body'], 'Product', 'ProductGroup' ), $product ) as $item ) {
 			if ( ! empty( $item['aggregateRating'] ) || ! empty( $item['review'] ) ) {

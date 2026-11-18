@@ -191,6 +191,7 @@ class ServedOutputChecksTest extends WC_Unit_Test_Case {
 		$results = $this->results();
 		$this->assertFalse( $results['llms_txt_valid'] );
 		$this->assertFalse( $results['llms_txt_links_resolve'] );
+		$this->assertSame( home_url( '/old/' ), array_column( $this->sut->all(), 'seen_at', 'id' )['llms_txt_links_resolve'], 'The broken link is kept to name it' );
 
 		$responses['/old/'] = null;
 		$this->serve( $responses );
@@ -553,7 +554,7 @@ class ServedOutputChecksTest extends WC_Unit_Test_Case {
 	}
 
 	/**
-	 * @testdox Checks for output WooCommerce doesn't build yet don't run, and are reported as pending.
+	 * @testdox The shipping and buy action checks run now that WooCommerce adds their output; only the UCP checkout check can be pending.
 	 */
 	public function test_pending_checks(): void {
 		update_option( 'woocommerce_feature_ucp_enabled', 'yes' );
@@ -561,14 +562,13 @@ class ServedOutputChecksTest extends WC_Unit_Test_Case {
 
 		$checks = array_column( $this->sut->all(), null, 'id' );
 
-		foreach ( ( new \ReflectionClassConstant( StoreOutputChecks::class, 'PENDING' ) )->getValue() as $id ) {
-			$this->assertNull( $checks[ $id ]['ok'], $id );
-			$this->assertTrue( $checks[ $id ]['pending'], $id );
-		}
-		$this->assertFalse( $checks['open_graph_tags']['pending'] );
-		$this->assertFalse( $checks['product_return_policy_schema']['pending'], 'WooCommerce adds the returns policy since 11.3' );
-		$this->assertContains( 'product_shipping_schema', ( new \ReflectionClassConstant( StoreOutputChecks::class, 'PENDING' ) )->getValue(), 'The list is not empty' );
-		$this->assertSame( ! StoreConditions::serves_ucp_checkout(), $checks['ucp_checkout']['pending'], 'The UCP checkout check runs once this WooCommerce serves UCP checkout' );
+		$this->assertFalse( $checks['product_shipping_schema']['pending'] );
+		$this->assertFalse( $checks['product_buy_action_schema']['pending'] );
+		$this->assertSame(
+			StoreConditions::serves_ucp_checkout() ? array() : array( 'ucp_checkout' ),
+			array_keys( array_filter( array_column( $checks, 'pending', 'id' ) ) ),
+			'The UCP checkout check runs once this WooCommerce serves UCP checkout'
+		);
 	}
 
 	/**
@@ -591,7 +591,7 @@ class ServedOutputChecksTest extends WC_Unit_Test_Case {
 	}
 
 	/**
-	 * @testdox The pending product checks find a returns policy and shipping details on an offer, and a BuyAction on the product or an offer.
+	 * @testdox The product checks find a returns policy and shipping details on an offer, and a BuyAction on the product or an offer.
 	 */
 	public function test_pending_product_detectors(): void {
 		$offer_has  = new \ReflectionMethod( StoreOutputChecks::class, 'offer_has' );
