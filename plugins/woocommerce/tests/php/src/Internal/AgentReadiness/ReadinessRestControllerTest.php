@@ -284,7 +284,7 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 		$this->assertStringContainsString( 'Not supported: 2', $text );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] [^\n]*\(search_visible\): \S/m', $text, 'A failing setup step says what was found.' );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] llms\.txt \(llms_txt_present\): \S[^\n]*Store response: 404 text\/html$/m', $text );
-		$this->assertMatchesRegularExpression( '/^\[Couldn’t check\] Sitemap lists products \(sitemap_lists_products\)$/m', $text );
+		$this->assertMatchesRegularExpression( '/^\[Couldn’t check\] Sitemap lists products \(sitemap_lists_products\)( \(not shown on the page\))?$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Not available yet\] Shipping details \(product_shipping_schema\) \(not shown on the page\)$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Passed\] Open Graph tags \(open_graph_tags\)$/m', $text );
 		$this->assertMatchesRegularExpression( '/^\[Failed\] No noindex \(no_noindex_directives\)[^\n]*\(not shown on the page\)$/m', $text );
