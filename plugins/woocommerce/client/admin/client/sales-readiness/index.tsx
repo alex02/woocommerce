@@ -1,7 +1,8 @@
 /**
  * External dependencies
  */
-import { Page } from '@wordpress/admin-ui';
+import { Breadcrumbs, Page } from '@wordpress/admin-ui';
+import { __ } from '@wordpress/i18n';
 import { Notice, Spinner } from '@wordpress/components';
 
 /**
@@ -18,12 +19,22 @@ import { DeclaredCard, SectionCard } from './components/section-card';
  * merchant question with the checks from the last scan, and what the store shares with agents.
  */
 export default function SalesReadiness() {
-	const { view, error, running, runCheck } = useReadinessView();
+	const { view, error, running, runCheck } = useReadinessView( 'page' );
 
 	return (
 		<Page
 			className="wc-sales-readiness"
-			title={ view?.title ?? '' }
+			breadcrumbs={
+				<Breadcrumbs
+					items={ [
+						{
+							label:
+								view?.title ??
+								__( 'AI sales readiness', 'woocommerce' ),
+						},
+					] }
+				/>
+			}
 			subTitle={ view?.description }
 			showSidebarToggle={ false }
 		>

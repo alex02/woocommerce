@@ -122,4 +122,41 @@ class ReadinessCheckPageTest extends WC_Unit_Test_Case {
 
 		$this->assertFalse( $view['run']['pending'], 'No scan must leave pending false' );
 	}
+
+	/**
+	 * @testdox A passed setup step shows its step title and why, and the connection URL step doesn't use its failure wording.
+	 */
+	public function test_passed_setup_steps_keep_their_step_title(): void {
+		$check_rows = new \ReflectionMethod( ReadinessCheckPage::class, 'check_rows' );
+		$check_rows->setAccessible( true );
+		$step = static fn( string $id, string $name, string $label, string $why ): array => array(
+			'id'      => $id,
+			'ok'      => true,
+			'blocks'  => 'ucp',
+			'level'   => StoreConditions::LEVEL_REQUIRED,
+			'name'    => $name,
+			'label'   => $label,
+			'why'     => $why,
+			'fix'     => '',
+			'fix_url' => '',
+		);
+		$rows = array_column(
+			$check_rows->invoke(
+				null,
+				array(
+					$step( 'ucp_discovery', 'Use a readable permalink structure', 'Fix your connection URL', 'it doesn\'t load your store\'s details.' ),
+					$step( 'guest_checkout', 'Guest checkout is allowed', 'Guest checkout is off', 'With guest checkout off, an AI assistant can check out only when …' ),
+				),
+				true
+			),
+			null,
+			'id'
+		);
+
+		$this->assertSame( 'pass', $rows['ucp_discovery']['state'] );
+		$this->assertSame( 'Use a readable permalink structure', $rows['ucp_discovery']['title'], 'Not the label, which names the failure' );
+		$this->assertSame( 'Any structure except Plain lets AI assistants reach your store.', $rows['ucp_discovery']['text'] );
+		$this->assertSame( 'Allow guest checkout', $rows['guest_checkout']['title'], 'The step title from the AI shopping checklist, not the report name' );
+		$this->assertSame( 'Guest checkout lets shoppers from AI assistants pay without creating an account.', $rows['guest_checkout']['text'] );
+	}
 }
