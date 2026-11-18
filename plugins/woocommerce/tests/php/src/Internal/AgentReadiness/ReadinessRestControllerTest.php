@@ -4,6 +4,7 @@ declare( strict_types = 1 );
 namespace Automattic\WooCommerce\Tests\Internal\AgentReadiness;
 
 use Automattic\WooCommerce\Internal\AgentReadiness\AgentReadiness;
+use Automattic\WooCommerce\Internal\AgentReadiness\ProductScan;
 use Automattic\WooCommerce\Internal\AgentReadiness\ScheduledScan;
 use Automattic\WooCommerce\Internal\AgentReadiness\UcpSwitch;
 use Automattic\WooCommerce\Internal\Ucp\UcpDiscovery;
@@ -189,6 +190,7 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 			AgentReadiness::REPORT_OPTION,
 			array(
 				'generated_at'        => '2026-11-18T10:42:00+00:00',
+				'truncated'           => true,
 				'products'            => 3,
 				'hidden_from_catalog' => 1,
 				'unsupported_types'   => 2,
@@ -281,6 +283,7 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 
 		$this->assertStringContainsString( 'Last checked: 2026-11-18T10:42:00+00:00', $text );
 		$this->assertStringContainsString( 'Check status: Finished', $text );
+		$this->assertStringContainsString( sprintf( "Check status: Finished\nChecked the %d products you changed most recently.", ProductScan::PRODUCT_LIMIT ), $text );
 		$this->assertStringContainsString( 'Products checked: 3', $text );
 		$this->assertStringContainsString( 'Hidden: 1', $text );
 		$this->assertStringContainsString( 'Not supported: 2', $text );
