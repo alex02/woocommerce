@@ -195,6 +195,11 @@ class SupportReport {
 			// The page shows the UCP switch, not a row, so this step takes the page's line for AI shopping being off.
 			$found   = 'ucp_on' === $check['id'] ? ReadinessCheckPage::ucp_off_note() : ReadinessCheckPage::failing_text( $check );
 			$lines[] = self::check_line( $check, $found );
+			if ( 'payment_method' === $check['id'] ) {
+				// A method can be on and still not take an order, like Cash on delivery for virtual products, so support needs the names.
+				$methods = $this->store_conditions->enabled_payment_methods();
+				$lines[] = 'Enabled payment methods: ' . ( array() !== $methods ? implode( ', ', $methods ) : 'None' );
+			}
 		}
 		$lines[] = '';
 		$lines[] = '### Store checks ###';
@@ -240,12 +245,24 @@ class SupportReport {
 			}
 		}
 		if ( '' !== ( $check['seen_at'] ?? '' ) ) {
-			$line .= ' Found on: ' . $check['seen_at'];
+			// Catalog search names the request it sent; a conflict names the page it was seen on.
+			$line .= 'ucp_endpoints_live' === $check['id'] ? ' Request: POST ' . self::request_path( (string) $check['seen_at'] ) : ' Found on: ' . $check['seen_at'];
 		}
 		if ( '' !== ( $check['source'] ?? '' ) && true !== $check['ok'] ) {
 			$line .= ' Store response: ' . $check['source'];
 		}
 		return $line;
+	}
+
+	/**
+	 * A store URL without its scheme and host, such as /wp-json/wc/ucp/v1/catalog/search, keeping the query plain permalinks use.
+	 *
+	 * @param string $url Store URL.
+	 */
+	private static function request_path( string $url ): string {
+		$path  = (string) wp_parse_url( $url, PHP_URL_PATH );
+		$query = (string) wp_parse_url( $url, PHP_URL_QUERY );
+		return ( '' !== $path ? $path : '/' ) . ( '' !== $query ? '?' . $query : '' );
 	}
 
 	/**

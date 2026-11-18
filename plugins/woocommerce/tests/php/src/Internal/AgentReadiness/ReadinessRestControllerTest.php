@@ -246,6 +246,16 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 						'conflict' => false,
 					),
 					array(
+						'id'       => 'ucp_endpoints_live',
+						'ok'       => null,
+						'blocks'   => 'ucp',
+						'name'     => 'UCP endpoint answers',
+						'why'      => '',
+						'conflict' => false,
+						'seen_at'  => home_url( '/wp-json/wc/ucp/v1/catalog/search' ),
+						'source'   => '503 text/html',
+					),
+					array(
 						'id'       => 'no_noindex_directives',
 						'ok'       => false,
 						'blocks'   => 'listing',
@@ -279,8 +289,27 @@ class ReadinessRestControllerTest extends WC_REST_Unit_Test_Case {
 			false
 		);
 
-		$text = $this->server->dispatch( new WP_REST_Request( 'GET', '/wc/v3/agent-readiness/support-report' ) )->get_data()['text'];
+		// Only Cash on delivery is on: the step passes, and the report names it.
+		$gateways = WC()->payment_gateways()->payment_gateways();
+		$previous = array_map( static fn( $gateway ) => $gateway->enabled, $gateways );
+		foreach ( $gateways as $gateway ) {
+			$gateway->enabled = 'cod' === $gateway->id ? 'yes' : 'no';
+		}
+		try {
+			$text = $this->server->dispatch( new WP_REST_Request( 'GET', '/wc/v3/agent-readiness/support-report' ) )->get_data()['text'];
+			foreach ( $gateways as $gateway ) {
+				$gateway->enabled = 'no';
+			}
+			$none = $this->server->dispatch( new WP_REST_Request( 'GET', '/wc/v3/agent-readiness/support-report' ) )->get_data()['text'];
+		} finally {
+			foreach ( $gateways as $key => $gateway ) {
+				$gateway->enabled = $previous[ $key ];
+			}
+		}
 
+		$this->assertMatchesRegularExpression( '/^[^\n]*\(payment_method\): ✔\nEnabled payment methods: Cash on delivery$/m', $text );
+		$this->assertMatchesRegularExpression( '/^[^\n]*\(payment_method\): ❌[^\n]*\nEnabled payment methods: None$/m', $none );
+		$this->assertMatchesRegularExpression( '/^UCP endpoint answers \(ucp_endpoints_live\): Couldn’t check Request: POST \/wp-json\/wc\/ucp\/v1\/catalog\/search Store response: 503 text\/html( \(not shown on the page\))?$/m', $text, 'Couldn\'t check says what the store answered, and where.' );
 		$this->assertStringContainsString( 'Last checked: 2026-11-18T10:42:00+00:00', $text );
 		$this->assertStringContainsString( 'Check status: Finished', $text );
 		$this->assertStringContainsString( sprintf( "Check status: Finished\nChecked the %d products you changed most recently.", ProductScan::PRODUCT_LIMIT ), $text );
