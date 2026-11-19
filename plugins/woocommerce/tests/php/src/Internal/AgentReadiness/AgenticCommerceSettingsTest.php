@@ -47,6 +47,10 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 		include_once WC_ABSPATH . 'includes/admin/settings/class-wc-settings-page.php';
 		set_current_screen( 'dashboard' );
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		if ( is_multisite() ) {
+			// On multisite only a super admin can choose the privacy policy page, as a single site's administrator can.
+			grant_super_admin( get_current_user_id() );
+		}
 		update_option( 'woocommerce_feature_agent_readiness_enabled', 'yes' );
 		delete_option( 'woocommerce_feature_ucp_enabled' );
 		$this->sut = wc_get_container()->get( AgenticCommerceSettings::class );

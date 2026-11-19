@@ -372,7 +372,12 @@ class UcpDiscoveryTest extends \WC_Unit_Test_Case {
 	 * @testdox On WordPress.com the fix names its support where other stores are pointed to their hosting provider.
 	 */
 	public function test_discovery_fix_on_wordpress_com(): void {
-		foreach ( array( 'not_readable', 'file_unusable', 'file_in_the_way', 'file_outdated', 'no_file' ) as $status ) {
+		$statuses = array( 'not_readable', 'file_unusable', 'file_in_the_way', 'file_outdated' );
+		if ( ! is_multisite() ) {
+			// On multisite the no_file fix only names the permalink setting, so it names no one to contact.
+			$statuses[] = 'no_file';
+		}
+		foreach ( $statuses as $status ) {
 			$wpcom = UcpDiscovery::discovery_fix( $status, true );
 			$other = UcpDiscovery::discovery_fix( $status, false );
 			$this->assertStringContainsString( 'contact WordPress.com support', $wpcom, $status );
