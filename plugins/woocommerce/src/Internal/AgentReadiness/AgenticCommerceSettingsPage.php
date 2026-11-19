@@ -255,7 +255,7 @@ class AgenticCommerceSettingsPage extends \WC_Settings_Page {
 	 * The store policy fields as the form saves them, with their pages as a list, so the order holds in
 	 * JavaScript. A stored page that is no longer listed starts on "Choose a page", as a select would.
 	 *
-	 * @return array<int, array{id:string,label:string,value:string,options:array<int, array{value:string,label:string}>}>
+	 * @return array<int, array{id:string,name:string,label:string,value:string,options:array<int, array{value:string,label:string}>}>
 	 */
 	private function policy_fields(): array {
 		$fields = array();
@@ -274,6 +274,8 @@ class AgenticCommerceSettingsPage extends \WC_Settings_Page {
 			$value    = (string) get_option( $field['id'], '' );
 			$fields[] = array(
 				'id'      => (string) $field['id'],
+				// The key WC_Admin_Settings::save_fields() reads the posted value from.
+				'name'    => (string) ( $field['field_name'] ?? $field['id'] ),
 				'label'   => (string) ( $field['title'] ?? '' ),
 				'value'   => in_array( $value, array_column( $options, 'value' ), true ) ? $value : '',
 				'options' => $options,

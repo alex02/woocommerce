@@ -147,6 +147,8 @@ export interface ShoppingCount {
 export interface PolicyField {
 	/** The option the settings form saves. */
 	id: string;
+	/** The input name the settings form reads the value from. */
+	name: string;
 	label: string;
 	value: string;
 	options: { value: string; label: string }[];

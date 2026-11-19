@@ -2186,6 +2186,32 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox A policy field posts under its field_name when it has one, the key the settings form saves from.
+	 */
+	public function test_policy_field_posts_under_its_field_name(): void {
+		$add = static function ( $settings ) {
+			$settings[] = array(
+				'id'         => 'example_policy_page_id',
+				'field_name' => 'example_policy[page]',
+				'title'      => 'Example policy',
+				'type'       => 'select',
+				'options'    => array( '' => 'Choose a page' ),
+			);
+			return $settings;
+		};
+		add_filter( 'woocommerce_get_settings_agentic-commerce', $add );
+
+		try {
+			$shopping = $this->shopping();
+		} finally {
+			remove_filter( 'woocommerce_get_settings_agentic-commerce', $add );
+		}
+
+		$this->assertSame( 'example_policy[page]', $this->policy( $shopping, 'example_policy_page_id' )['name'] );
+		$this->assertSame( AgenticCommerceSettings::FAQ_PAGE_OPTION, $this->policy( $shopping, AgenticCommerceSettings::FAQ_PAGE_OPTION )['name'], 'Without one, the option id' );
+	}
+
+	/**
 	 * @testdox The switch links to how AI shopping works, and the connection URL to a place to test it.
 	 */
 	public function test_switch_and_connection_links(): void {
