@@ -99,7 +99,12 @@ const useHashTarget = (
 ) => {
 	useEffect( () => {
 		const go = () => {
-			const id = decodeURIComponent( window.location.hash.slice( 1 ) );
+			let id = '';
+			try {
+				id = decodeURIComponent( window.location.hash.slice( 1 ) );
+			} catch {
+				// A malformed hash, such as #%E0%A4%A, names no field.
+			}
 			if ( ! id || ! root.current ) {
 				return;
 			}
@@ -421,7 +426,7 @@ export default function AiShopping( { view }: { view: ShoppingView } ) {
 						<input
 							key={ field.id }
 							type="hidden"
-							name={ field.id }
+							name={ field.name }
 							value={ String( values[ field.id ] ?? '' ) }
 						/>
 					) ) }

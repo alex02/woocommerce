@@ -115,12 +115,14 @@ const view = ( fields: Partial< ShoppingView > = {} ): ShoppingView => ( {
 		fields: [
 			{
 				id: 'woocommerce_refund_returns_page_id',
+				name: 'woocommerce_refund_returns_page_id',
 				label: 'Refund and returns policy',
 				value: '',
 				options: pages,
 			},
 			{
 				id: 'woocommerce_terms_page_id',
+				name: 'woocommerce_terms_page_id',
 				label: 'Terms and conditions',
 				value: '12',
 				options: pages,
@@ -527,6 +529,16 @@ describe( 'AiShopping', () => {
 		expect( document.activeElement ).toBe(
 			screen.getByLabelText( 'Refund and returns policy' )
 		);
+		window.location.hash = '';
+	} );
+
+	it( 'ignores a hash that is not a valid encoded id', () => {
+		window.location.hash = '#%E0%A4%A';
+		renderPage( view() );
+
+		expect(
+			screen.getByLabelText( 'Terms and conditions' )
+		).toBeInTheDocument();
 		window.location.hash = '';
 	} );
 
