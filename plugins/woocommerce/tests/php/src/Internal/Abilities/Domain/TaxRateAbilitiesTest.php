@@ -283,6 +283,48 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox Should refuse a postcode or city that cleans to nothing or to *, and keep the stored ones.
+	 */
+	public function test_update_refuses_locations_that_clean_to_nothing(): void {
+		$rate = $this->create_rate(
+			array(
+				'rate'      => '19',
+				'postcodes' => array( '10115' ),
+				'cities'    => array( 'BERLIN' ),
+			)
+		);
+
+		foreach ( array( array( 'postcodes' => array( '<br>' ) ), array( 'postcodes' => array( '%20' ) ), array( 'postcodes' => array( '<b>*</b>' ) ), array( 'cities' => array( '<b></b>' ) ) ) as $locations ) {
+			$result = $this->run_ability( 'woocommerce/tax-rate-update', array( 'id' => $rate['id'] ) + $locations );
+
+			$this->assertWPError( $result );
+			$this->assertSame( 'woocommerce_ability_tax_rate_location_empty', $result->get_error_code() );
+			$this->assertSame( 400, $result->get_error_data()['status'] );
+		}
+
+		$stored = $this->run_ability( 'woocommerce/tax-rates-query', array( 'include' => array( $rate['id'] ) ) )['rates'][0];
+		$this->assertSame( array( '10115' ), $stored['postcodes'] );
+		$this->assertSame( array( 'BERLIN' ), $stored['cities'] );
+	}
+
+	/**
+	 * @testdox Should refuse to create a rate whose city cleans to nothing, without saving the rate.
+	 */
+	public function test_create_refuses_a_location_that_cleans_to_nothing(): void {
+		$result = $this->run_ability(
+			'woocommerce/tax-rate-create',
+			array(
+				'rate'   => '19',
+				'cities' => array( '<b></b>' ),
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'woocommerce_ability_tax_rate_location_empty', $result->get_error_code() );
+		$this->assertSame( 0, $this->run_ability( 'woocommerce/tax-rates-query' )['total'], 'No rate should be created.' );
+	}
+
+	/**
 	 * @testdox Should match a customer postcode written with a space to a rate saved with that space.
 	 */
 	public function test_spaced_postcode_matches_at_checkout(): void {
@@ -423,6 +465,33 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 			$wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}woocommerce_tax_rate_locations WHERE tax_rate_id = %d", $rate['id'] ) ),
 			'The locations of the rate should be gone.'
 		);
+	}
+
+	/**
+	 * @testdox Should make carts recalculate shipping taxes after a create, update or delete, but not after an update that changes nothing.
+	 */
+	public function test_writes_refresh_saved_shipping_rates(): void {
+		set_transient( 'shipping-transient-version', 'before-create' );
+		$rate = $this->create_rate( array( 'rate' => '25' ) );
+		$this->assertNotSame( 'before-create', get_transient( 'shipping-transient-version' ), 'A create should refresh saved shipping rates.' );
+
+		set_transient( 'shipping-transient-version', 'before-noop' );
+		$this->run_ability( 'woocommerce/tax-rate-update', array( 'id' => $rate['id'] ) );
+		$this->assertSame( 'before-noop', get_transient( 'shipping-transient-version' ), 'An update that changes nothing should keep saved shipping rates.' );
+
+		set_transient( 'shipping-transient-version', 'before-update' );
+		$this->run_ability(
+			'woocommerce/tax-rate-update',
+			array(
+				'id'        => $rate['id'],
+				'postcodes' => array( '10115' ),
+			)
+		);
+		$this->assertNotSame( 'before-update', get_transient( 'shipping-transient-version' ), 'An update of only the postcodes should refresh saved shipping rates.' );
+
+		set_transient( 'shipping-transient-version', 'before-delete' );
+		$this->run_ability( 'woocommerce/tax-rate-delete', array( 'id' => $rate['id'] ) );
+		$this->assertNotSame( 'before-delete', get_transient( 'shipping-transient-version' ), 'A delete should refresh saved shipping rates.' );
 	}
 
 	/**

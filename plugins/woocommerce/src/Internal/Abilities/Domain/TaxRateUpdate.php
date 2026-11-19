@@ -95,14 +95,20 @@ class TaxRateUpdate extends AbstractDomainAbility implements AbilityDefinition {
 			return $columns;
 		}
 
-		if ( empty( $columns ) && ! isset( $input['postcodes'] ) && ! isset( $input['cities'] ) ) {
+		$locations = self::get_rate_locations( $input );
+		if ( is_wp_error( $locations ) ) {
+			return $locations;
+		}
+
+		if ( empty( $columns ) && empty( $locations ) ) {
 			return array( 'rate' => $current );
 		}
 
-		if ( $columns ) {
+		if ( ! empty( $columns ) ) {
 			\WC_Tax::_update_tax_rate( $rate_id, $columns );
 		}
-		self::write_rate_locations( $rate_id, $input );
+		self::write_rate_locations( $rate_id, $locations );
+		self::refresh_shipping_rates_cache();
 
 		$rate = self::get_rate_or_error( $rate_id );
 		if ( is_wp_error( $rate ) ) {

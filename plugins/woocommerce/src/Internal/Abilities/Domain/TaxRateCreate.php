@@ -83,6 +83,11 @@ class TaxRateCreate extends AbstractDomainAbility implements AbilityDefinition {
 			return $columns;
 		}
 
+		$locations = self::get_rate_locations( $input );
+		if ( is_wp_error( $locations ) ) {
+			return $locations;
+		}
+
 		$columns += array(
 			'tax_rate_name'     => '',
 			'tax_rate_priority' => 1,
@@ -99,7 +104,8 @@ class TaxRateCreate extends AbstractDomainAbility implements AbilityDefinition {
 			return new \WP_Error( 'woocommerce_ability_tax_rate_create_failed', __( 'The tax rate could not be saved.', 'woocommerce' ), array( 'status' => 500 ) );
 		}
 
-		self::write_rate_locations( $rate_id, $input );
+		self::write_rate_locations( $rate_id, $locations );
+		self::refresh_shipping_rates_cache();
 
 		$rate = self::get_rate_or_error( $rate_id );
 		if ( is_wp_error( $rate ) ) {

@@ -106,21 +106,57 @@ trait TaxRateAbilityTrait {
 	}
 
 	/**
-	 * Replace the postcodes and cities that the input sends. An empty list clears them.
-	 * Postcodes lose their spaces and hyphens, as on the tax settings screen, since checkout
-	 * only matches a spaced postcode in countries whose format has the space.
+	 * Clean the sent postcodes and cities as the tax settings screen does; unsent lists are left out.
+	 * Postcodes lose their spaces and hyphens, since checkout only matches a spaced postcode in
+	 * countries whose format has the space. WC_Tax drops an entry that cleans to nothing or *,
+	 * which would lift the whole restriction, so such an entry is refused.
 	 *
-	 * @param int   $rate_id Tax rate ID.
-	 * @param array $input   Ability input.
+	 * @param array $input Ability input.
+	 * @return array{postcodes?: string[], cities?: string[]}|\WP_Error
 	 */
-	private static function write_rate_locations( int $rate_id, array $input ): void {
+	private static function get_rate_locations( array $input ) {
+		$locations = array();
 		if ( isset( $input['postcodes'] ) ) {
-			$postcodes = array_map( 'wc_normalize_postcode', array_map( 'sanitize_text_field', $input['postcodes'] ) );
-			\WC_Tax::_update_tax_rate_postcodes( $rate_id, implode( ';', $postcodes ) );
+			$locations['postcodes'] = array_map( 'wc_normalize_postcode', array_map( 'sanitize_text_field', $input['postcodes'] ) );
 		}
 		if ( isset( $input['cities'] ) ) {
-			\WC_Tax::_update_tax_rate_cities( $rate_id, implode( ';', array_map( 'sanitize_text_field', $input['cities'] ) ) );
+			$locations['cities'] = array_map( 'sanitize_text_field', $input['cities'] );
 		}
+
+		foreach ( $locations as $field => $values ) {
+			if ( array_intersect( $values, array( '', '*' ) ) ) {
+				return new \WP_Error(
+					'woocommerce_ability_tax_rate_location_empty',
+					/* translators: %s: postcodes or cities. */
+					sprintf( __( 'Each entry in %s needs a letter or number once HTML tags and percent-encoded characters are removed.', 'woocommerce' ), $field ),
+					array( 'status' => 400 )
+				);
+			}
+		}
+
+		return $locations;
+	}
+
+	/**
+	 * Replace the postcodes and cities from get_rate_locations(). An empty list clears them.
+	 *
+	 * @param int   $rate_id   Tax rate ID.
+	 * @param array $locations Cleaned postcodes and cities.
+	 */
+	private static function write_rate_locations( int $rate_id, array $locations ): void {
+		if ( isset( $locations['postcodes'] ) ) {
+			\WC_Tax::_update_tax_rate_postcodes( $rate_id, implode( ';', $locations['postcodes'] ) );
+		}
+		if ( isset( $locations['cities'] ) ) {
+			\WC_Tax::_update_tax_rate_cities( $rate_id, implode( ';', $locations['cities'] ) );
+		}
+	}
+
+	/**
+	 * Saved cart shipping rates carry their taxes, so they must be recalculated after any rate change.
+	 */
+	private static function refresh_shipping_rates_cache(): void {
+		\WC_Cache_Helper::get_transient_version( 'shipping', true );
 	}
 
 	/**

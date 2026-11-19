@@ -93,6 +93,7 @@ class TaxRateDelete extends AbstractDomainAbility implements AbilityDefinition {
 		if ( \WC_Tax::_get_tax_rate( $input['id'] ) || '' !== $wpdb->last_error ) {
 			return new \WP_Error( 'woocommerce_ability_tax_rate_delete_failed', __( 'The tax rate could not be deleted.', 'woocommerce' ), array( 'status' => 500 ) );
 		}
+		self::refresh_shipping_rates_cache();
 
 		return array( 'rate' => $rate );
 	}
