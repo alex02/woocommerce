@@ -463,6 +463,20 @@ class ProductsStore extends \WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox load_product() leaves images out of the woocommerce state, as it does for woocommerce/products.
+	 */
+	public function test_load_product_omits_images_from_woocommerce_namespace(): void {
+		$product = WC_Helper_Product::create_simple_product();
+		$id      = $product->get_id();
+
+		$loaded = TestedProductsStore::load_product( $this->consent, $id );
+
+		$this->assertArrayHasKey( 'images', $loaded );
+		$this->assertArrayNotHasKey( 'images', wp_interactivity_state( $this->shared_namespace )['products'][ $id ] );
+		$this->assertArrayNotHasKey( 'images', wp_interactivity_state( $this->store_namespace )['products'][ $id ] );
+	}
+
+	/**
 	 * @testdox load_purchasable_child_products() seeds purchasable children into the woocommerce state and leaves non-purchasable ones out.
 	 */
 	public function test_load_purchasable_child_products_seeds_woocommerce_namespace(): void {
