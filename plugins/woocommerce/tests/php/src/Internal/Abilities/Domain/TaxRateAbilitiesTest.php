@@ -517,15 +517,14 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 	}
 
 	/**
-	 * @testdox Should report an error, not the deleted rate, when the check for the rate row fails.
+	 * @testdox Should report an error when the check for the rate row fails, and still make carts recalculate shipping taxes.
 	 */
 	public function test_delete_reports_a_failed_check_of_the_rate_row(): void {
 		global $wpdb;
 
-		$rate         = $this->create_rate( array( 'rate' => '19' ) );
-		$rates_table  = "{$wpdb->prefix}woocommerce_tax_rates";
-		$hook_ran     = false;
-		$rates_delete = "DELETE FROM {$rates_table} WHERE ";
+		$rate        = $this->create_rate( array( 'rate' => '19' ) );
+		$rates_table = "{$wpdb->prefix}woocommerce_tax_rates";
+		$hook_ran    = false;
 		add_action(
 			'woocommerce_tax_rate_deleted',
 			static function () use ( &$hook_ran ) {
@@ -534,13 +533,14 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 		);
 		add_filter(
 			'query',
-			static function ( $query ) use ( &$hook_ran, $rates_delete, $rates_table ) {
+			static function ( $query ) use ( &$hook_ran, $rates_table ) {
 				if ( $hook_ran && false !== strpos( $query, "FROM {$rates_table}" ) ) {
 					return 'SELECT * FROM no_such_table_for_the_check';
 				}
-				return str_replace( $rates_delete, $rates_delete . '1 = 0 AND ', $query );
+				return $query;
 			}
 		);
+		set_transient( 'shipping-transient-version', 'before-delete' );
 
 		$suppressed = $wpdb->suppress_errors( true );
 		try {
@@ -551,6 +551,7 @@ class TaxRateAbilitiesTest extends \WC_Unit_Test_Case {
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'woocommerce_ability_tax_rate_delete_failed', $result->get_error_code() );
+		$this->assertNotSame( 'before-delete', get_transient( 'shipping-transient-version' ), 'Saved shipping rates should be refreshed even when the check fails.' );
 	}
 
 	/**
