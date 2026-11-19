@@ -8,6 +8,7 @@ declare( strict_types=1 );
 namespace Automattic\WooCommerce\Internal\Abilities\Domain;
 
 use Automattic\WooCommerce\Abilities\AbilityDefinition;
+use Automattic\WooCommerce\Abilities\ExtensibleAbilities;
 use Automattic\WooCommerce\Internal\Abilities\Domain\Traits\OrderAbilityTrait;
 use Automattic\WooCommerce\Internal\Abilities\Domain\Traits\OrderRefundAbilityTrait;
 
@@ -97,6 +98,9 @@ class OrderRefundsQuery extends AbstractDomainAbility implements AbilityDefiniti
 				static fn( \WC_Order_Refund $refund ): bool => in_array( $refund->get_id(), $input['include'], true )
 			);
 		}
+
+		$refunds = array_values( $refunds );
+		ExtensibleAbilities::prime( 'order_refund', $refunds );
 
 		$items = array();
 		foreach ( $refunds as $refund ) {

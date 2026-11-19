@@ -1123,6 +1123,25 @@ class ExtensibleAbilitiesTest extends \WC_REST_Unit_Test_Case {
 					return array( 'product_ids' => array( $product ) );
 				},
 			),
+			'order_refund'   => array(
+				'order_refund',
+				'woocommerce/order-refunds-query',
+				'refunds',
+				static function (): array {
+					$order = wc_create_order();
+					$order->set_total( '50' );
+					$order->save();
+					foreach ( array( 5, 7 ) as $amount ) {
+						wc_create_refund(
+							array(
+								'order_id' => $order->get_id(),
+								'amount'   => $amount,
+							)
+						);
+					}
+					return array( 'id' => $order->get_id() );
+				},
+			),
 		);
 	}
 
