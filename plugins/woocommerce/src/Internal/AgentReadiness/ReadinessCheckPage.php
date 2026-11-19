@@ -37,6 +37,15 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 	private const HIDDEN_PRODUCT_CHECKS = array( 'image_alt_text' );
 
 	/**
+	 * Whether Sales readiness hides this product check (it still appears in the support download).
+	 *
+	 * @param string $id Check id.
+	 */
+	public static function hides_product_check( string $id ): bool {
+		return in_array( $id, self::HIDDEN_PRODUCT_CHECKS, true );
+	}
+
+	/**
 	 * How many issues Fix first lists after the required steps.
 	 */
 	private const FIX_FIRST_ISSUES = 3;

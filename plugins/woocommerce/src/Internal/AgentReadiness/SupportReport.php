@@ -102,10 +102,13 @@ class SupportReport {
 	 * The report as text, one line per item.
 	 */
 	public function text(): string {
-		$report = $this->agent_readiness->get_cached_report();
-		$live   = $this->store_conditions->all();
-		$lines  = array_merge(
-			$this->header( $report ),
+		// Pending before and after the report read, so a scan that finishes mid-read is not shown as Finished.
+		$pending = $this->scheduled_scan->is_pending();
+		$report  = $this->agent_readiness->get_cached_report();
+		$pending = $pending || $this->scheduled_scan->is_pending();
+		$live    = $this->store_conditions->all();
+		$lines   = array_merge(
+			$this->header( $report, $pending ),
 			array( '' ),
 			$this->shopping( $report ),
 			array( '' ),
@@ -120,12 +123,12 @@ class SupportReport {
 	/**
 	 * Site, versions, and when the last check ran and how it ended.
 	 *
-	 * @param array<string, mixed>|null $report Stored report.
+	 * @param array<string, mixed>|null $report  Stored report.
+	 * @param bool                      $pending Whether a scan is pending around the report read.
 	 * @return string[]
 	 */
-	private function header( ?array $report ): array {
-		$rules   = $this->remote_rules->version();
-		$pending = $this->scheduled_scan->is_pending();
+	private function header( ?array $report, bool $pending ): array {
+		$rules = $this->remote_rules->version();
 		if ( $pending && $this->scheduled_scan->is_stalled() ) {
 			$state = 'Checks can’t start because scheduled actions aren’t running on your site. Your hosting provider can usually turn them back on.';
 		} elseif ( $pending ) {
@@ -293,6 +296,9 @@ class SupportReport {
 			}
 			$count = (int) ( $check['count'] ?? 0 );
 			$line  = sprintf( '%s (%s): %s', (string) ( $check['label'] ?? $check['id'] ), (string) $check['id'], 0 === $count ? '✔' : '❌' );
+			if ( ReadinessCheckPage::hides_product_check( (string) $check['id'] ) ) {
+				$line .= ' (not shown on the page)';
+			}
 			if ( $count > 0 ) {
 				$ids   = array_map( 'intval', (array) ( $check['product_ids'] ?? array() ) );
 				$line .= ' ' . sprintf( 1 === $count ? '%s product' : '%s products', $count );

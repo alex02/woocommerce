@@ -77,15 +77,15 @@ class ReadinessRestController extends RestApiControllerBase {
 	 * @param ScheduledScan      $scheduled_scan      Background scan.
 	 * @param UcpSwitch          $ucp_switch          UCP switch.
 	 * @param ReadinessCheckPage $readiness_page      Sales readiness.
-	 * @param SupportReport      $support_report      Text report for support.
+	 * @param SupportReport|null $support_report      Text report for support; resolved from the container when omitted.
 	 */
-	final public function init( FeaturesController $features_controller, AgentReadiness $agent_readiness, ScheduledScan $scheduled_scan, UcpSwitch $ucp_switch, ReadinessCheckPage $readiness_page, SupportReport $support_report ): void {
+	final public function init( FeaturesController $features_controller, AgentReadiness $agent_readiness, ScheduledScan $scheduled_scan, UcpSwitch $ucp_switch, ReadinessCheckPage $readiness_page, ?SupportReport $support_report = null ): void {
 		$this->features_controller = $features_controller;
 		$this->agent_readiness     = $agent_readiness;
 		$this->scheduled_scan      = $scheduled_scan;
 		$this->ucp_switch          = $ucp_switch;
 		$this->readiness_page      = $readiness_page;
-		$this->support_report      = $support_report;
+		$this->support_report      = $support_report ?? wc_get_container()->get( SupportReport::class );
 	}
 
 	/**
