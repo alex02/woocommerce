@@ -369,16 +369,10 @@ body:has(.wc-sales-readiness) {
 	justify-content: space-between;
 	gap: var(--wpds-dimension-gap-lg);
 
-	&__when {
+	> div {
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
-	}
-
-	&__actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--wpds-dimension-gap-sm);
 	}
 
 	&__intro {
@@ -386,8 +380,8 @@ body:has(.wc-sales-readiness) {
 		margin-block-end: var(--wpds-dimension-gap-md);
 	}
 
-	// Check again and Download for support: outline buttons.
-	&__actions > .components-button {
+	// Check again: an outline button.
+	> .components-button {
 		@include sales-readiness-button;
 		border-color: var(--wpds-color-stroke-interactive-brand);
 
@@ -399,4 +393,14 @@ body:has(.wc-sales-readiness) {
 			border-color: var(--wpds-color-stroke-interactive-brand-disabled);
 		}
 	}
+}
+
+// Download your results: a button styled like the contact support link.
+.wc-sales-readiness__link-button {
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	text-decoration-line: underline;
+	cursor: pointer;
 }

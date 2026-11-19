@@ -39,7 +39,7 @@ describe( 'SupportDownload', () => {
 		render( <SupportDownload onError={ onError } /> );
 
 		fireEvent.click(
-			screen.getByRole( 'button', { name: 'Download for support' } )
+			screen.getByRole( 'button', { name: 'Download your results' } )
 		);
 
 		await waitFor( () => expect( click ).toHaveBeenCalledTimes( 1 ) );
@@ -66,7 +66,7 @@ describe( 'SupportDownload', () => {
 		render( <SupportDownload onError={ onError } /> );
 
 		fireEvent.click(
-			screen.getByRole( 'button', { name: 'Download for support' } )
+			screen.getByRole( 'button', { name: 'Download your results' } )
 		);
 
 		await waitFor( () =>
@@ -77,42 +77,65 @@ describe( 'SupportDownload', () => {
 		expect( click ).not.toHaveBeenCalled();
 		await waitFor( () =>
 			expect(
-				screen.getByRole( 'button', { name: 'Download for support' } )
+				screen.getByRole( 'button', { name: 'Download your results' } )
 			).toBeEnabled()
 		);
 	} );
 } );
 
 describe( 'CheckedCard', () => {
-	it( 'offers Download for support next to Check again, since the report comes from the last check', () => {
+	const checked = ( intro: string | null ) =>
+		( {
+			last_checked: 'Last checked today',
+			checked_note: null,
+			intro,
+			support_url: 'https://woocommerce.com/my-account/create-a-ticket/',
+			run: {
+				label: 'Check again',
+				pending: false,
+				stalled: false,
+				message: '',
+				link: null,
+			},
+		} ) as unknown as ReadinessView;
+
+	const renderCard = ( intro: string | null ) =>
 		render(
 			<CheckedCard
-				view={
-					{
-						last_checked: 'Last checked today',
-						checked_note: null,
-						intro: null,
-						run: {
-							label: 'Check again',
-							pending: false,
-							stalled: false,
-							message: '',
-							link: null,
-						},
-					} as unknown as ReadinessView
-				}
+				view={ checked( intro ) }
 				running={ false }
 				onRun={ jest.fn() }
 				onDownloadError={ jest.fn() }
 			/>
 		);
 
-		const checkAgain = screen.getByRole( 'button', {
-			name: 'Check again',
-		} );
-		const download = screen.getByRole( 'button', {
-			name: 'Download for support',
-		} );
-		expect( download.parentElement ).toBe( checkAgain.parentElement );
+	it( 'offers Need help? with the results to download and a link to support', () => {
+		renderCard( null );
+
+		expect(
+			screen.getByText( /^Need help\?/ ).closest( 'span' )
+		).toHaveTextContent(
+			/^Need help\? Download your results and contact support/
+		);
+		expect(
+			screen.getByRole( 'button', { name: 'Download your results' } )
+		).toBeEnabled();
+		expect(
+			screen.getByRole( 'link', { name: /contact support/ } )
+		).toHaveAttribute(
+			'href',
+			'https://woocommerce.com/my-account/create-a-ticket/'
+		);
+	} );
+
+	it( 'offers only support before the first check, as there are no results to download', () => {
+		renderCard( 'Run a check to see what AI assistants get.' );
+
+		expect(
+			screen.queryByRole( 'button', { name: 'Download your results' } )
+		).toBeNull();
+		expect(
+			screen.getByRole( 'link', { name: /Contact support/ } )
+		).toBeInTheDocument();
 	} );
 } );

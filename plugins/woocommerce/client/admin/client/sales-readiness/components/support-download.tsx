@@ -1,9 +1,10 @@
 /**
  * External dependencies
  */
+import type { ReactNode } from 'react';
 import { useState } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
-import { Button } from '@wordpress/components';
+import { Link } from '@wordpress/ui';
 import { __ } from '@wordpress/i18n';
 
 export const SUPPORT_REPORT_PATH = '/wc/v3/agent-readiness/support-report';
@@ -13,8 +14,11 @@ export const SUPPORT_REPORT_PATH = '/wc/v3/agent-readiness/support-report';
  */
 export const SupportDownload = ( {
 	onError,
+	children,
 }: {
 	onError: ( message: string ) => void;
+	/** The link text, from the Need help? line. */
+	children?: ReactNode;
 } ) => {
 	const [ busy, setBusy ] = useState( false );
 
@@ -50,14 +54,19 @@ export const SupportDownload = ( {
 	};
 
 	return (
-		<Button
-			variant="secondary"
-			size="compact"
-			isBusy={ busy }
-			disabled={ busy }
+		// A link like contact support beside it, as a button since it saves a file.
+		<Link
+			render={
+				<button
+					type="button"
+					className="wc-sales-readiness__link-button"
+					disabled={ busy }
+				/>
+			}
+			aria-busy={ busy }
 			onClick={ download }
 		>
-			{ __( 'Download for support', 'woocommerce' ) }
-		</Button>
+			{ children ?? __( 'Download your results', 'woocommerce' ) }
+		</Link>
 	);
 };

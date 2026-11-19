@@ -316,6 +316,12 @@ class ReadinessRestController extends RestApiControllerBase {
 				'type'        => 'object',
 				'context'     => array( 'view' ),
 			),
+			'support_url'  => array(
+				'description' => __( 'Where the page sends merchants to contact support.', 'woocommerce' ),
+				'type'        => 'string',
+				'format'      => 'uri',
+				'context'     => array( 'view' ),
+			),
 			'fix_first'    => array(
 				'type'    => array( 'object', 'null' ),
 				'context' => array( 'view' ),

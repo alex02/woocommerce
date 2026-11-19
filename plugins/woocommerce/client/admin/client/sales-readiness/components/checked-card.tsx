@@ -1,8 +1,10 @@
 /**
  * External dependencies
  */
-import { Card, Text } from '@wordpress/ui';
+import { Card, Link, Text } from '@wordpress/ui';
 import { Button } from '@wordpress/components';
+import { createInterpolateElement } from '@wordpress/element';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -19,9 +21,9 @@ interface CheckedCardProps {
 }
 
 /**
- * When the store was last checked, with Check again and Download for support (the report is
- * built from the last check). Before the first check it says what a check shows and offers
- * Run check.
+ * When the store was last checked, with Check again, then Need help? with the results to
+ * download for support (built from the last check). Before the first check it says what a
+ * check shows and offers Run check.
  */
 export const CheckedCard = ( {
 	view,
@@ -40,7 +42,7 @@ export const CheckedCard = ( {
 				</Text>
 			) }
 			<div className="wc-sales-readiness-checked">
-				<div className="wc-sales-readiness-checked__when">
+				<div>
 					<Text variant="body-md">{ view.last_checked }</Text>
 					{ view.checked_note && (
 						<Text
@@ -50,19 +52,45 @@ export const CheckedCard = ( {
 							{ view.checked_note }
 						</Text>
 					) }
-				</div>
-				<div className="wc-sales-readiness-checked__actions">
-					<Button
-						variant="secondary"
-						size="compact"
-						disabled={ view.run.pending || running }
-						isBusy={ running }
-						onClick={ onRun }
+					<Text
+						variant="body-sm"
+						className="wc-sales-readiness__muted"
 					>
-						{ view.run.label }
-					</Button>
-					<SupportDownload onError={ onDownloadError } />
+						{ createInterpolateElement(
+							view.intro
+								? __(
+										'Need help? <support>Contact support</support>.',
+										'woocommerce'
+									)
+								: __(
+										'Need help? <download>Download your results</download> and <support>contact support</support>.',
+										'woocommerce'
+									),
+							{
+								download: (
+									<SupportDownload
+										onError={ onDownloadError }
+									/>
+								),
+								support: (
+									<Link
+										href={ view.support_url }
+										openInNewTab
+									/>
+								),
+							}
+						) }
+					</Text>
 				</div>
+				<Button
+					variant="secondary"
+					size="compact"
+					disabled={ view.run.pending || running }
+					isBusy={ running }
+					onClick={ onRun }
+				>
+					{ view.run.label }
+				</Button>
 			</div>
 			<RunStatus run={ view.run } />
 		</Card.Content>

@@ -5,6 +5,7 @@ namespace Automattic\WooCommerce\Internal\AgentReadiness;
 
 use Automattic\WooCommerce\Internal\Features\FeaturesController;
 use Automattic\WooCommerce\Internal\RegisterHooksInterface;
+use Automattic\WooCommerce\Internal\Ucp\UcpDiscovery;
 use Automattic\WooCommerce\StoreApi\Utilities\Ucp\Utils as UcpUtils;
 
 defined( 'ABSPATH' ) || exit;
@@ -296,6 +297,8 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 					'text' => __( 'View Scheduled Actions', 'woocommerce' ),
 				) : null,
 			),
+			// The support line's link: WordPress.com support on WordPress.com, else the one in WooCommerce > Home > Help.
+			'support_url'  => UcpDiscovery::is_wordpress_com() ? 'https://wordpress.com/help/contact' : 'https://woocommerce.com/my-account/create-a-ticket/?utm_medium=product',
 			'fix_first'    => null === $report ? null : $this->fix_first( $visible, $report ),
 			// Setup steps also show in the Setup checklist; here they sit in the card of the question they answer.
 			'sections'     => null === $report ? array() : $this->sections( $visible, $launched, $report ),
