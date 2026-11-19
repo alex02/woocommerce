@@ -2212,6 +2212,41 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 	}
 
 	/**
+	 * @testdox Save on AI shopping saves the policy fields it posts and leaves a setting the page doesn't show as it was.
+	 */
+	public function test_save_keeps_a_filtered_setting_the_page_does_not_show(): void {
+		global $current_section;
+		$add = static function ( $settings ) {
+			$settings[] = array(
+				'id'   => 'example_agentic_checkbox',
+				'type' => 'checkbox',
+			);
+			return $settings;
+		};
+		add_filter( 'woocommerce_get_settings_agentic-commerce', $add );
+		update_option( 'example_agentic_checkbox', 'yes' );
+		$page = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'publish',
+			)
+		);
+		$_POST[ AgenticCommerceSettings::TERMS_PAGE_OPTION ] = (string) $page;
+		$current_section                                     = AgenticCommerceSettings::SHOPPING_SECTION; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- The section WooCommerce sets from the URL; reset below.
+
+		try {
+			$this->page()->save();
+		} finally {
+			$current_section = ''; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Reset after the save.
+			unset( $_POST[ AgenticCommerceSettings::TERMS_PAGE_OPTION ] );
+			remove_filter( 'woocommerce_get_settings_agentic-commerce', $add );
+		}
+
+		$this->assertSame( (string) $page, (string) get_option( AgenticCommerceSettings::TERMS_PAGE_OPTION ), 'The posted policy field is saved' );
+		$this->assertSame( 'yes', get_option( 'example_agentic_checkbox' ), 'A setting the page does not post keeps its value' );
+	}
+
+	/**
 	 * @testdox The switch links to how AI shopping works, and the connection URL to a place to test it.
 	 */
 	public function test_switch_and_connection_links(): void {
@@ -2480,6 +2515,17 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 						'fix'     => '',
 						'fix_url' => '',
 					),
+					array(
+						'id'      => 'sitemap_lastmod',
+						'ok'      => false,
+						'blocks'  => 'discovery',
+						'group'   => 'find',
+						'name'    => 'lastmod name',
+						'label'   => 'lastmod label',
+						'why'     => '',
+						'fix'     => '',
+						'fix_url' => '',
+					),
 				),
 			)
 		);
@@ -2494,6 +2540,7 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 		$view = $this->view();
 		$this->assertSame( array( 'Let search engines index your store' ), array_column( $view['fix_first']['items'], 'title' ), 'Fix first names the box to untick' );
 		$this->assertNotContains( 'sitemap_lists_products', $row_ids( $view ), 'and no card shows the sitemap row' );
+		$this->assertNotContains( 'sitemap_lastmod', $row_ids( $view ), 'nor the sitemap dates row, which has no sitemap to read' );
 
 		update_option( 'blog_public', '1' );
 		$view = $this->view();
@@ -2515,17 +2562,6 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 	 */
 	private function view_with_check( string $id ): array {
 		update_option(
-					array(
-						'id'      => 'sitemap_lastmod',
-						'ok'      => false,
-						'blocks'  => 'discovery',
-						'group'   => 'find',
-						'name'    => 'lastmod name',
-						'label'   => 'lastmod label',
-						'why'     => '',
-						'fix'     => '',
-						'fix_url' => '',
-					),
 			AgentReadiness::REPORT_OPTION,
 			array(
 				'generated_at' => gmdate( 'c' ),
@@ -2540,7 +2576,6 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 						'why'      => '',
 						'fix'      => '',
 						'fix_url'  => '',
-		$this->assertNotContains( 'sitemap_lastmod', $row_ids( $view ), 'nor the sitemap dates row, which has no sitemap to read' );
 						'conflict' => false,
 					),
 				),

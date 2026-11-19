@@ -252,6 +252,30 @@ class AgenticCommerceSettingsPage extends \WC_Settings_Page {
 	}
 
 	/**
+	 * Whether a setting of the AI shopping section is a store policy field, the only kind the page posts.
+	 * Filtered settings may lack keys; only complete select fields become form controls.
+	 *
+	 * @param mixed $field Setting.
+	 */
+	private static function is_policy_field( $field ): bool {
+		return is_array( $field ) && 'select' === ( $field['type'] ?? null ) && ! empty( $field['id'] ) && is_array( $field['options'] ?? null );
+	}
+
+	/**
+	 * Save only the fields the AI shopping page posts, so a setting a filter adds to the section, which
+	 * the page doesn't show, keeps its value instead of being reset.
+	 */
+	protected function save_settings_for_current_section() {
+		global $current_section;
+
+		if ( AgenticCommerceSettings::SHOPPING_SECTION !== $current_section ) {
+			parent::save_settings_for_current_section();
+			return;
+		}
+		\WC_Admin_Settings::save_fields( array_filter( $this->get_settings( $current_section ), array( self::class, 'is_policy_field' ) ) );
+	}
+
+	/**
 	 * The store policy fields as the form saves them, with their pages as a list, so the order holds in
 	 * JavaScript. A stored page that is no longer listed starts on "Choose a page", as a select would.
 	 *
@@ -259,11 +283,7 @@ class AgenticCommerceSettingsPage extends \WC_Settings_Page {
 	 */
 	private function policy_fields(): array {
 		$fields = array();
-		foreach ( $this->get_settings_for_section( AgenticCommerceSettings::SHOPPING_SECTION ) as $field ) {
-			// Filtered settings may lack keys; only complete select fields become form controls.
-			if ( ! is_array( $field ) || 'select' !== ( $field['type'] ?? null ) || empty( $field['id'] ) || ! is_array( $field['options'] ?? null ) ) {
-				continue;
-			}
+		foreach ( array_filter( $this->get_settings_for_section( AgenticCommerceSettings::SHOPPING_SECTION ), array( self::class, 'is_policy_field' ) ) as $field ) {
 			$options = array();
 			foreach ( $field['options'] as $value => $label ) {
 				$options[] = array(
