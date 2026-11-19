@@ -81,6 +81,7 @@ class ReadinessCheckPage implements RegisterHooksInterface {
 	private const SAME_CAUSE = array(
 		'no_noindex_directives'        => 'search_visible',
 		'sitemap_lists_products'       => 'search_visible',
+		'sitemap_lastmod'              => 'search_visible',
 		'product_return_policy_schema' => 'refund_returns_page',
 		'ucp_checkout'                 => 'guest_checkout',
 	);

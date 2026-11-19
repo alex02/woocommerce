@@ -2515,6 +2515,17 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 	 */
 	private function view_with_check( string $id ): array {
 		update_option(
+					array(
+						'id'      => 'sitemap_lastmod',
+						'ok'      => false,
+						'blocks'  => 'discovery',
+						'group'   => 'find',
+						'name'    => 'lastmod name',
+						'label'   => 'lastmod label',
+						'why'     => '',
+						'fix'     => '',
+						'fix_url' => '',
+					),
 			AgentReadiness::REPORT_OPTION,
 			array(
 				'generated_at' => gmdate( 'c' ),
@@ -2529,6 +2540,7 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 						'why'      => '',
 						'fix'      => '',
 						'fix_url'  => '',
+		$this->assertNotContains( 'sitemap_lastmod', $row_ids( $view ), 'nor the sitemap dates row, which has no sitemap to read' );
 						'conflict' => false,
 					),
 				),
