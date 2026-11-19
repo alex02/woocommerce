@@ -11,6 +11,8 @@ import {
 	SUPPORT_REPORT_PATH,
 	SupportDownload,
 } from '../components/support-download';
+import { CheckedCard } from '../components/checked-card';
+import type { ReadinessView } from '../types';
 
 jest.mock( '@wordpress/api-fetch', () => jest.fn() );
 const mockFetch = apiFetch as unknown as jest.Mock;
@@ -78,5 +80,39 @@ describe( 'SupportDownload', () => {
 				screen.getByRole( 'button', { name: 'Download for support' } )
 			).toBeEnabled()
 		);
+	} );
+} );
+
+describe( 'CheckedCard', () => {
+	it( 'offers Download for support next to Check again, since the report comes from the last check', () => {
+		render(
+			<CheckedCard
+				view={
+					{
+						last_checked: 'Last checked today',
+						checked_note: null,
+						intro: null,
+						run: {
+							label: 'Check again',
+							pending: false,
+							stalled: false,
+							message: '',
+							link: null,
+						},
+					} as unknown as ReadinessView
+				}
+				running={ false }
+				onRun={ jest.fn() }
+				onDownloadError={ jest.fn() }
+			/>
+		);
+
+		const checkAgain = screen.getByRole( 'button', {
+			name: 'Check again',
+		} );
+		const download = screen.getByRole( 'button', {
+			name: 'Download for support',
+		} );
+		expect( download.parentElement ).toBe( checkAgain.parentElement );
 	} );
 } );

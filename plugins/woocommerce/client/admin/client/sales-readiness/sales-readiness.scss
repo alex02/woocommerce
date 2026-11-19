@@ -369,10 +369,16 @@ body:has(.wc-sales-readiness) {
 	justify-content: space-between;
 	gap: var(--wpds-dimension-gap-lg);
 
-	> div {
+	&__when {
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
+	}
+
+	&__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--wpds-dimension-gap-sm);
 	}
 
 	&__intro {
@@ -380,8 +386,8 @@ body:has(.wc-sales-readiness) {
 		margin-block-end: var(--wpds-dimension-gap-md);
 	}
 
-	// Check again: an outline button.
-	> .components-button {
+	// Check again and Download for support: outline buttons.
+	&__actions > .components-button {
 		@include sales-readiness-button;
 		border-color: var(--wpds-color-stroke-interactive-brand);
 

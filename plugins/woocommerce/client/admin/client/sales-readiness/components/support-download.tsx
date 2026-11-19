@@ -52,6 +52,7 @@ export const SupportDownload = ( {
 	return (
 		<Button
 			variant="secondary"
+			size="compact"
 			isBusy={ busy }
 			disabled={ busy }
 			onClick={ download }

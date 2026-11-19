@@ -15,7 +15,6 @@ import { CheckedCard } from './components/checked-card';
 import { ErrorNotice } from './components/error-notice';
 import { FixFirstCard } from './components/fix-first';
 import { DeclaredCard, SectionCard } from './components/section-card';
-import { SupportDownload } from './components/support-download';
 
 /**
  * WooCommerce > Sales readiness: when the store was last checked, Fix first, then a card per
@@ -42,7 +41,6 @@ export default function SalesReadiness() {
 			}
 			subTitle={ view?.description }
 			showSidebarToggle={ false }
-			actions={ <SupportDownload onError={ setDownloadError } /> }
 		>
 			<div className="wc-sales-readiness__content">
 				{ error && <ErrorNotice message={ error } reload={ reload } /> }
@@ -61,6 +59,7 @@ export default function SalesReadiness() {
 							view={ view }
 							running={ running }
 							onRun={ runCheck }
+							onDownloadError={ setDownloadError }
 						/>
 						{ view.fix_first && (
 							<FixFirstCard fixFirst={ view.fix_first } />
