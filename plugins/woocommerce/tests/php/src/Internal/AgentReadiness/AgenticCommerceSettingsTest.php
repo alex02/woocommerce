@@ -2250,8 +2250,9 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 			return $settings;
 		};
 		add_filter( 'woocommerce_get_settings_agentic-commerce', $add );
-		$_POST['example_policy'] = array( 'page' => (string) $page );
+		$_POST['example_policy']                             = array( 'page' => (string) $page );
 		$_POST[ AgenticCommerceSettings::TERMS_PAGE_OPTION ] = (string) $page;
+
 		$current_section = AgenticCommerceSettings::SHOPPING_SECTION; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- The section WooCommerce sets from the URL; reset below.
 
 		try {
