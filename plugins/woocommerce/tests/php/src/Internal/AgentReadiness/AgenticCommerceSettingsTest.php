@@ -1942,7 +1942,12 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 			$lines = implode( ' ', $step['lines'] );
 			$this->assertSame( 'Change permalinks', $step['link']['text'] );
 			$this->assertStringContainsString( 'options-permalink.php', $step['link']['href'] );
-			$this->assertStringContainsString( 'writable', $lines );
+			// On multisite one file can't serve every site, so the fix names only the permalink setting.
+			if ( is_multisite() ) {
+				$this->assertStringNotContainsString( 'writable', $lines );
+			} else {
+				$this->assertStringContainsString( 'writable', $lines );
+			}
 			$this->assertStringContainsString( 'index.php', $lines );
 		} finally {
 			chmod( $locked, 0755 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod

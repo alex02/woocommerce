@@ -188,13 +188,20 @@ class StoreConditionsTest extends WC_Unit_Test_Case {
 	}
 
 	/**
-	 * @testdox Plain permalinks pass when WooCommerce can write the discovery file, and fail with both fixes when it can't.
+	 * @testdox Plain permalinks pass when WooCommerce can write the discovery file, and fail with both fixes when it can't. On multisite they always fail.
 	 */
 	public function test_plain_permalinks_depend_on_writing_the_discovery_file(): void {
 		global $wp_rewrite;
 		self::make_store_ready();
 		$wp_rewrite->set_permalink_structure( '' );
 
+		if ( is_multisite() ) {
+			// Multisite never writes the file, so plain permalinks fail with only the permalink fix.
+			$this->assertSame( array( 'ucp_discovery' ), $this->sut->failing_required() );
+			$this->assertStringContainsString( 'except Plain', $this->ucp_discovery_fix() );
+			$this->assertStringNotContainsString( 'writable', $this->ucp_discovery_fix() );
+			return;
+		}
 		$this->assertNotContains( 'ucp_discovery', $this->sut->failing_required() );
 
 		$locked = get_temp_dir() . uniqid( 'wc-ucp-locked-' );
