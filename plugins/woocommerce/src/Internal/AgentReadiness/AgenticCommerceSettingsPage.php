@@ -259,8 +259,9 @@ class AgenticCommerceSettingsPage extends \WC_Settings_Page {
 	 */
 	private function policy_fields(): array {
 		$fields = array();
-		foreach ( $this->get_settings_for_shopping_section() as $field ) {
-			if ( 'select' !== $field['type'] ) {
+		foreach ( $this->get_settings_for_section( AgenticCommerceSettings::SHOPPING_SECTION ) as $field ) {
+			// Filtered settings may lack keys; only complete select fields become form controls.
+			if ( ! is_array( $field ) || 'select' !== ( $field['type'] ?? null ) || empty( $field['id'] ) || ! is_array( $field['options'] ?? null ) ) {
 				continue;
 			}
 			$options = array();
@@ -272,8 +273,8 @@ class AgenticCommerceSettingsPage extends \WC_Settings_Page {
 			}
 			$value    = (string) get_option( $field['id'], '' );
 			$fields[] = array(
-				'id'      => $field['id'],
-				'label'   => $field['title'],
+				'id'      => (string) $field['id'],
+				'label'   => (string) ( $field['title'] ?? '' ),
 				'value'   => in_array( $value, array_column( $options, 'value' ), true ) ? $value : '',
 				'options' => $options,
 			);

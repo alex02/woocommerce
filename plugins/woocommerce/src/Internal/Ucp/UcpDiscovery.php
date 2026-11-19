@@ -129,13 +129,13 @@ final class UcpDiscovery implements RegisterHooksInterface {
 					: sprintf( __( 'The file at %1$s has old store details. Delete it, or ask your hosting provider to make %2$s writable so WooCommerce can replace it.', 'woocommerce' ), $path, $dir );
 			case 'no_file':
 				if ( is_multisite() ) {
-					return __( 'Choose a structure that doesn’t start with index.php.', 'woocommerce' );
+					return __( 'Choose any structure except Plain. Structures that start with index.php don’t work either.', 'woocommerce' );
 				}
 				return $wordpress_com
 					/* translators: %s: folder path. */
-					? sprintf( __( 'Choose a structure that doesn’t start with index.php. If you need to keep your current structure, contact WordPress.com support to make %s writable, so WooCommerce can add your connection file.', 'woocommerce' ), $dir )
+					? sprintf( __( 'Choose any structure except Plain. Structures that start with index.php don’t work either. If you need to keep your current structure, contact WordPress.com support to make %s writable, so WooCommerce can add your connection file.', 'woocommerce' ), $dir )
 					/* translators: %s: folder path. */
-					: sprintf( __( 'Choose a structure that doesn’t start with index.php. If you need to keep your current structure, ask your hosting provider to make %s writable, so WooCommerce can add your connection file.', 'woocommerce' ), $dir );
+					: sprintf( __( 'Choose any structure except Plain. Structures that start with index.php don’t work either. If you need to keep your current structure, ask your hosting provider to make %s writable, so WooCommerce can add your connection file.', 'woocommerce' ), $dir );
 			default:
 				return '';
 		}

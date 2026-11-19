@@ -285,6 +285,44 @@ describe( 'Sales readiness tracking', () => {
 		);
 	} );
 
+	it( 'does not claim full readiness when Fix first is empty but a check is open', () => {
+		render(
+			<SalesReadinessOverview
+				initialView={ { ...checkedView, fix_first: null } }
+			/>
+		);
+		expect(
+			screen.getByText( /Nothing ranked to fix right now/ )
+		).toBeInTheDocument();
+		expect(
+			screen.queryByText( /everything AI assistants need/ )
+		).not.toBeInTheDocument();
+	} );
+
+	it( 'claims full readiness when every check passed', () => {
+		const passed = {
+			...checkedView,
+			fix_first: null,
+			sections: [
+				{
+					...checkedView.sections[ 0 ],
+					rows: [
+						{
+							...checkedView.sections[ 0 ].rows[ 0 ],
+							state: 'pass' as const,
+							title: 'llms.txt is present',
+						},
+					],
+					folded: [],
+				},
+			],
+		};
+		render( <SalesReadinessOverview initialView={ passed } /> );
+		expect(
+			screen.getByText( /everything AI assistants need/ )
+		).toBeInTheDocument();
+	} );
+
 	it( 'keeps the Overview cards when starting a check fails', async () => {
 		const first = {
 			...checkedView,

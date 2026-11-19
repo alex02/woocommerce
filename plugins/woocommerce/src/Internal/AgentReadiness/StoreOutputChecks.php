@@ -1017,8 +1017,10 @@ class StoreOutputChecks {
 	 * @param StoreResponses $responses Store responses.
 	 */
 	private function llms_txt_links_resolve( StoreResponses $responses ): ?bool {
-		$links = array();
-		$has   = $this->with_llms_txt(
+		// Clear before any early return so a later scan does not keep a previous broken URL.
+		$this->broken_llms_link = '';
+		$links                  = array();
+		$has                    = $this->with_llms_txt(
 			$responses,
 			static function ( string $llms_txt ) use ( &$links ): bool {
 				preg_match_all( '/\]\(\s*(https?:\/\/[^\s)]+)/i', $llms_txt, $matches );
@@ -1030,11 +1032,10 @@ class StoreOutputChecks {
 			return $has;
 		}
 		// Links with a query string are skipped: one such as ?add-to-cart=12 would act on the store.
-		$links                  = array_map( static fn( string $link ): string => explode( '#', $link, 2 )[0], $links );
-		$links                  = array_filter( $links, static fn( string $link ): bool => $responses->is_store_url( $link ) && ! str_contains( $link, '?' ) );
-		$links                  = array_slice( array_values( array_unique( $links ) ), 0, self::MAX_LLMS_TXT_LINKS );
-		$unknown                = false;
-		$this->broken_llms_link = '';
+		$links   = array_map( static fn( string $link ): string => explode( '#', $link, 2 )[0], $links );
+		$links   = array_filter( $links, static fn( string $link ): bool => $responses->is_store_url( $link ) && ! str_contains( $link, '?' ) );
+		$links   = array_slice( array_values( array_unique( $links ) ), 0, self::MAX_LLMS_TXT_LINKS );
+		$unknown = false;
 		foreach ( $links as $link ) {
 			$response = $responses->get( $link );
 			if ( null === $response || self::blocked( $response['status'] ) ) {

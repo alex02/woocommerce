@@ -170,6 +170,26 @@ describe( 'useReadinessView', () => {
 			expect.objectContaining( { action: 'load' } )
 		);
 	} );
+
+	it( 'does not record viewed after unmount', async () => {
+		const { recordEvent } = jest.requireMock( '@woocommerce/tracks' );
+		let finish: ( value: unknown ) => void = () => {};
+		mockFetch.mockImplementationOnce(
+			() =>
+				new Promise( ( resolve ) => {
+					finish = resolve;
+				} )
+		);
+		const { unmount } = renderHook( () => useReadinessView( 'overview' ) );
+		unmount();
+		await act( async () => {
+			finish( view( false ) );
+		} );
+		expect( recordEvent ).not.toHaveBeenCalledWith(
+			'sales_readiness_viewed',
+			expect.anything()
+		);
+	} );
 } );
 
 describe( 'RunStatus', () => {

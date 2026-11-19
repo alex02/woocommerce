@@ -44,12 +44,16 @@ export function useReadinessView(
 	const pendingSince = useRef< number | null >( null );
 	// True after a view has been shown: poll failures must not spam Tracks, replace the view or stop polling.
 	const hasView = useRef( initialView !== null );
+	const mounted = useRef( true );
 
 	const load = useCallback( async () => {
 		try {
 			const loaded = await apiFetch< ReadinessView >( {
 				path: VIEW_PATH,
 			} );
+			if ( ! mounted.current ) {
+				return;
+			}
 			setView( loaded );
 			setError( null );
 			setReload( false );
@@ -59,7 +63,7 @@ export function useReadinessView(
 				trackReadiness( 'viewed', viewedProps( loaded, surface ) );
 			}
 		} catch {
-			if ( hasView.current ) {
+			if ( ! mounted.current || hasView.current ) {
 				return;
 			}
 			trackReadiness( 'error', { surface, action: 'load' } );
@@ -75,6 +79,7 @@ export function useReadinessView(
 
 	const preloaded = useRef( initialView );
 	useEffect( () => {
+		mounted.current = true;
 		if ( ! preloaded.current ) {
 			void load();
 		} else if ( ! viewed.current ) {
@@ -84,6 +89,9 @@ export function useReadinessView(
 				viewedProps( preloaded.current, surface )
 			);
 		}
+		return () => {
+			mounted.current = false;
+		};
 	}, [ load, surface ] );
 
 	useEffect( () => {

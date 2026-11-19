@@ -102,7 +102,7 @@ The checks judge what the store returns, whoever provides it. Some things they c
 - What a plugin sends a channel directly. Google for WooCommerce sends its own GTIN and brand to Google, so the page can pass while Google gets another value (WOOAI-1595).
 - Output that depends on the shopper. The scan is a logged-out visitor with the store's default currency and prices; a currency switcher or wholesale pricing shows other shoppers other values.
 - Values added in the browser. The page is read as the server sends it, so JSON-LD a script adds after load is missed.
-- Every product. Output checks read one product page; the stored-data checks run on every product.
+- Every product. Output checks read up to five product pages; the stored-data checks run on every product.
 
 `ucp_checkout` tests output this WooCommerce may not serve yet. Until it does, it doesn't run: it's reported with `ok` null and `pending` true, so it reads as coming soon, not as failed or couldn't check.
 

@@ -202,7 +202,7 @@ class UcpDiscoveryTest extends \WC_Unit_Test_Case {
 			$this->set_permalink_structure( '' );
 			$this->assertSame( 'no_file', UcpDiscovery::serve_status() );
 			$fix = UcpDiscovery::discovery_fix( 'no_file' );
-			$this->assertStringContainsString( 'doesn’t start with index.php', $fix );
+			$this->assertStringContainsString( 'except Plain', $fix );
 			$this->assertStringContainsString( 'index.php', $fix );
 			$this->assertStringContainsString( 'writable', $fix );
 			$this->assertStringContainsString( $locked, $fix );

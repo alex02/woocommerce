@@ -207,7 +207,8 @@ class StoreConditionsTest extends WC_Unit_Test_Case {
 			}
 			$this->assertSame( array( 'ucp_discovery' ), $this->sut->failing_required() );
 			$fix = $this->ucp_discovery_fix();
-			$this->assertStringContainsString( 'doesn’t start with index.php', $fix );
+			$this->assertStringContainsString( 'except Plain', $fix );
+			$this->assertStringContainsString( 'index.php', $fix );
 			$this->assertStringContainsString( 'writable', $fix );
 			$checks = array_column( $this->sut->all(), null, 'id' );
 			$this->assertSame( admin_url( 'options-permalink.php' ), $checks['ucp_discovery']['fix_url'] );
