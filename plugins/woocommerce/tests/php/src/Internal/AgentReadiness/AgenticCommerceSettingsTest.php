@@ -682,6 +682,21 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 			$view['declared']['items'],
 			'Every item, found or not'
 		);
+
+		$report             = get_option( 'woocommerce_agent_readiness_report' );
+		$report['declared'] = array(
+			array(
+				'id'    => 'llms-txt-woocommerce-guidance',
+				'name'  => 'WooCommerce store guidance',
+				'found' => false,
+			),
+		);
+		update_option( 'woocommerce_agent_readiness_report', $report );
+		$this->assertStringContainsString(
+			'WooCommerce caches its llms.txt briefly',
+			$this->view()['declared']['text'],
+			'Missing WooCommerce guidance notes the short llms.txt cache'
+		);
 		$this->assertSame(
 			array(
 				'intent' => 'stable',
@@ -2209,6 +2224,47 @@ class AgenticCommerceSettingsTest extends WC_Unit_Test_Case {
 
 		$this->assertSame( 'example_policy[page]', $this->policy( $shopping, 'example_policy_page_id' )['name'] );
 		$this->assertSame( AgenticCommerceSettings::FAQ_PAGE_OPTION, $this->policy( $shopping, AgenticCommerceSettings::FAQ_PAGE_OPTION )['name'], 'Without one, the option id' );
+	}
+
+	/**
+	 * @testdox A nested select id keeps its stored value after save and reload.
+	 */
+	public function test_nested_policy_select_survives_save_and_reload(): void {
+		global $current_section;
+		$page = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'publish',
+			)
+		);
+		$add  = static function ( $settings ) use ( $page ) {
+			$settings[] = array(
+				'id'      => 'example_policy[page]',
+				'title'   => 'Example policy',
+				'type'    => 'select',
+				'options' => array(
+					''             => 'Choose a page',
+					(string) $page => 'Example page',
+				),
+			);
+			return $settings;
+		};
+		add_filter( 'woocommerce_get_settings_agentic-commerce', $add );
+		$_POST['example_policy'] = array( 'page' => (string) $page );
+		$_POST[ AgenticCommerceSettings::TERMS_PAGE_OPTION ] = (string) $page;
+		$current_section = AgenticCommerceSettings::SHOPPING_SECTION; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- The section WooCommerce sets from the URL; reset below.
+
+		try {
+			$this->page()->save();
+			$shopping = $this->shopping();
+		} finally {
+			$current_section = ''; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Reset after the save.
+			unset( $_POST['example_policy'], $_POST[ AgenticCommerceSettings::TERMS_PAGE_OPTION ] );
+			remove_filter( 'woocommerce_get_settings_agentic-commerce', $add );
+		}
+
+		$this->assertSame( array( 'page' => (string) $page ), get_option( 'example_policy' ), 'save_fields writes the nested option' );
+		$this->assertSame( (string) $page, $this->policy( $shopping, 'example_policy[page]' )['value'], 'policy_fields reads the nested value back' );
 	}
 
 	/**
