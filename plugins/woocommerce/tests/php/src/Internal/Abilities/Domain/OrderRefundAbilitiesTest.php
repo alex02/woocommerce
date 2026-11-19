@@ -517,6 +517,7 @@ class OrderRefundAbilitiesTest extends WC_Unit_Test_Case {
 
 		$this->assertWPError( $result );
 		$this->assertSame( 'woocommerce_ability_order_refund_in_transaction', $result->get_error_code() );
+		$this->assertSame( 409, $result->get_error_data()['status'] );
 		$this->assertSame( array(), $this->gateway->refunded );
 		$this->assertCount( 0, wc_get_order( $order->get_id() )->get_refunds() );
 	}
@@ -1039,6 +1040,121 @@ class OrderRefundAbilitiesTest extends WC_Unit_Test_Case {
 		$this->assertArrayNotHasKey( 'reason', $all['refunds'][1], 'A refund without a reason should omit the field.' );
 		$this->assertSame( array( $first->get_id() ), array_column( $included['refunds'], 'id' ) );
 		$this->assertSame( 1, $included['total'] );
+	}
+
+	/**
+	 * @testdox Should list refunds made in the same second newest first, by ID, and still put an older refund last.
+	 */
+	public function test_query_orders_refunds_of_the_same_second_by_id(): void {
+		$order = $this->create_order_without_lines();
+		$ids   = array();
+		foreach ( array( '2026-01-02 10:00:00', '2026-01-02 10:00:00', '2026-01-02 10:00:00', '2026-01-01 10:00:00' ) as $date ) {
+			$ids[] = wc_create_refund(
+				array(
+					'order_id'     => $order->get_id(),
+					'amount'       => 1,
+					'date_created' => $date,
+				)
+			)->get_id();
+		}
+
+		$result = wp_get_ability( 'woocommerce/order-refunds-query' )->execute( array( 'id' => $order->get_id() ) );
+
+		$this->assertIsArray( $result, is_wp_error( $result ) ? $result->get_error_message() : '' );
+		$this->assertSame( array( $ids[2], $ids[1], $ids[0], $ids[3] ), array_column( $result['refunds'], 'id' ) );
+	}
+
+	/**
+	 * @testdox Should refuse the same line refund sent again with only its total, as a repeat of the refund.
+	 */
+	public function test_refuses_same_line_refund_sent_as_total_only(): void {
+		$order   = $this->create_order();
+		$line_id = $this->get_product_line_id( $order );
+		$first   = $this->refund(
+			array(
+				'id'         => $order->get_id(),
+				'line_items' => array(
+					array(
+						'line_item_id' => $line_id,
+						'quantity'     => 1,
+					),
+				),
+			)
+		);
+		$this->assertIsArray( $first, is_wp_error( $first ) ? $first->get_error_message() : '' );
+
+		$second = $this->refund(
+			array(
+				'id'         => $order->get_id(),
+				'line_items' => array(
+					array(
+						'line_item_id' => $line_id,
+						'refund_total' => (float) $first['refund']['amount'],
+					),
+				),
+			)
+		);
+
+		$this->assertWPError( $second );
+		$this->assertSame( 'woocommerce_ability_order_refund_duplicate', $second->get_error_code() );
+		$this->assertCount( 1, wc_get_order( $order->get_id() )->get_refunds() );
+	}
+
+	/**
+	 * @testdox Should report a lock that fails with a database error as such, not as a refund in progress.
+	 */
+	public function test_reports_lock_database_error(): void {
+		global $wpdb;
+		$order  = $this->create_order_without_lines();
+		$break  = static function ( string $query ) use ( $wpdb ): string {
+			return 0 === strpos( $query, "INSERT IGNORE INTO {$wpdb->options}" ) && false !== strpos( $query, 'woocommerce_ability_order_refund_lock_' )
+				? "INSERT IGNORE INTO {$wpdb->prefix}no_such_table (a) VALUES (1)"
+				: $query;
+		};
+		$errors = $wpdb->suppress_errors( true );
+		add_filter( 'query', $break );
+
+		$result = $this->refund(
+			array(
+				'id'     => $order->get_id(),
+				'amount' => '10',
+			)
+		);
+
+		remove_filter( 'query', $break );
+		$wpdb->suppress_errors( $errors );
+		$this->assertWPError( $result );
+		$this->assertSame( 'woocommerce_ability_order_refund_lock_failed', $result->get_error_code() );
+		$this->assertSame( 500, $result->get_error_data()['status'] );
+		$this->assertCount( 0, wc_get_order( $order->get_id() )->get_refunds() );
+	}
+
+	/**
+	 * @testdox Should tell the client not to refund again when the call fails after woocommerce_create_refund ran and the refund is rolled back.
+	 */
+	public function test_reports_lost_refund_when_the_call_fails_after_the_create_hook(): void {
+		$order = $this->create_order_without_lines();
+		add_action(
+			'woocommerce_create_refund',
+			static function () {
+				throw new \Error( 'Payment provider SDK crashed.' );
+			}
+		);
+
+		$result = $this->refund(
+			array(
+				'id'             => $order->get_id(),
+				'amount'         => '10',
+				'refund_payment' => true,
+			)
+		);
+
+		$this->assertWPError( $result );
+		$this->assertSame( 'woocommerce_ability_order_refund_lost', $result->get_error_code() );
+		$this->assertStringContainsString( 'Do not refund again.', $result->get_error_message() );
+		$this->assertStringContainsString( 'Payment provider SDK crashed.', $result->get_error_message() );
+		$this->assertSame( array(), $this->gateway->refunded );
+		$this->assertCount( 0, wc_get_order( $order->get_id() )->get_refunds() );
 	}
 
 	/**

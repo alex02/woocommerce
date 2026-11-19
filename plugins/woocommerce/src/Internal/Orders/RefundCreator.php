@@ -90,7 +90,8 @@ class RefundCreator {
 	}
 
 	/**
-	 * Set the amount, lines and totals of the refund without saving it, and without firing any hook.
+	 * Set the amount, lines and totals of the refund without saving it. Like wc_create_refund() before its hook, it
+	 * fires woocommerce_order_before_calculate_totals and the getter filters, but not woocommerce_create_refund.
 	 *
 	 * @param \WC_Order_Refund $refund New refund, not saved.
 	 * @return null|\WP_Error

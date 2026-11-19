@@ -98,6 +98,14 @@ class OrderRefundCreate extends ActionableAbility {
 	private ?\WP_Error $save_error = null;
 
 	/**
+	 * Whether woocommerce_create_refund ran in the current call and the refund was not committed yet, so a
+	 * rollback or an uncaught error may lose a refund that an extension already paid.
+	 *
+	 * @var bool
+	 */
+	private bool $create_hook_ran = false;
+
+	/**
 	 * Get the ability registration arguments.
 	 *
 	 * @return array
@@ -190,7 +198,13 @@ class OrderRefundCreate extends ActionableAbility {
 			$order,
 			array(
 				'amount'         => $amount,
-				'line_items'     => $prepared['schema_line_items'],
+				'line_items'     => array_map(
+					static fn( array $line ): array => array(
+						'line_item_id' => $line['line_item_id'],
+						'refund_total' => $line['refund_total'] ?? null,
+					),
+					$prepared['schema_line_items']
+				),
 				'refund_payment' => $refund_payment,
 			),
 			$decimals
@@ -236,12 +250,14 @@ class OrderRefundCreate extends ActionableAbility {
 	/**
 	 * Lock the refunds of the order for the call, so a second call cannot pass the duplicate and amount checks
 	 * before the first refund is saved. The state of an outer call, such as a hook that refunds another order
-	 * through this ability, is restored at the end.
+	 * through this ability, is restored at the end. Only transactions opened by DatabaseTransaction::run() or
+	 * wc_transaction_query() are detected; a raw START TRANSACTION is not.
 	 *
 	 * @internal
 	 *
 	 * @param mixed $input Ability input.
 	 * @return mixed|\WP_Error
+	 * @throws \Throwable An error thrown before woocommerce_create_refund ran, as it is.
 	 */
 	public function execute_change( $input = null ) {
 		if ( ! is_array( $input ) ) {
@@ -252,7 +268,7 @@ class OrderRefundCreate extends ActionableAbility {
 			return new \WP_Error(
 				'woocommerce_ability_order_refund_in_transaction',
 				__( 'An order cannot be refunded inside an open database transaction, as a rollback would lose the refund after the payment was returned. Call this ability outside the transaction.', 'woocommerce' ),
-				array( 'status' => 500 )
+				array( 'status' => 409 )
 			);
 		}
 
@@ -260,9 +276,17 @@ class OrderRefundCreate extends ActionableAbility {
 		$outer_creator = $this->creator ?? null;
 		$outer_lock    = $this->lock;
 		$outer_error   = $this->save_error;
+		$outer_ran     = $this->create_hook_ran;
 
 		$order_id = $input['id'];
 		$lock     = self::lock_order( $order_id );
+		if ( false === $lock ) {
+			return new \WP_Error(
+				'woocommerce_ability_order_refund_lock_failed',
+				__( 'The order could not be locked for the refund because of a database error, so no refund was created. It is safe to try again.', 'woocommerce' ),
+				array( 'status' => 500 )
+			);
+		}
 		if ( null === $lock ) {
 			return new \WP_Error(
 				'woocommerce_ability_order_refund_in_progress',
@@ -270,15 +294,26 @@ class OrderRefundCreate extends ActionableAbility {
 				array( 'status' => 409 )
 			);
 		}
-		$this->lock       = $lock;
-		$this->save_error = null;
+		$this->lock            = $lock;
+		$this->save_error      = null;
+		$this->create_hook_ran = false;
 
 		try {
-			return parent::execute_change( $input );
+			try {
+				$result = parent::execute_change( $input );
+			} catch ( \Throwable $e ) {
+				if ( ! $this->create_hook_ran() ) {
+					throw $e;
+				}
+				$result = new \WP_Error( 'refund_failed', $e->getMessage() );
+			}
+
+			return $this->create_hook_ran() ? self::lost_after_hook_error( $order_id, $result ) : $result;
 		} finally {
 			self::unlock_order( $order_id, $lock );
-			$this->lock       = $outer_lock;
-			$this->save_error = $outer_error;
+			$this->lock            = $outer_lock;
+			$this->save_error      = $outer_error;
+			$this->create_hook_ran = $outer_ran;
 			if ( null !== $outer_order ) {
 				$this->order = $outer_order;
 			}
@@ -305,8 +340,10 @@ class OrderRefundCreate extends ActionableAbility {
 			);
 		}
 
-		$declined = $this->creator->before_save( $subject );
+		$this->create_hook_ran = true;
+		$declined              = $this->creator->before_save( $subject );
 		if ( is_wp_error( $declined ) ) {
+			$this->create_hook_ran = false;
 			return self::refund_error( $declined );
 		}
 
@@ -330,7 +367,8 @@ class OrderRefundCreate extends ActionableAbility {
 	 * @return null|\WP_Error
 	 */
 	protected function after_commit( $subject, array $input ): ?\WP_Error {
-		$save_error = $this->save_error;
+		$this->create_hook_ran = false;
+		$save_error            = $this->save_error;
 		if ( null === $save_error && ( $input['refund_payment'] ?? false ) && ! self::record_payment_attempt( $subject ) ) {
 			$save_error = new \WP_Error( 'refund_incomplete', __( 'The refund could not be marked as sent to the payment gateway.', 'woocommerce' ) );
 		}
@@ -467,6 +505,45 @@ class OrderRefundCreate extends ActionableAbility {
 	}
 
 	/**
+	 * Read through a method, since save() sets the flag inside the parent call.
+	 *
+	 * @return bool
+	 */
+	private function create_hook_ran(): bool {
+		return $this->create_hook_ran;
+	}
+
+	/**
+	 * The error of a call that failed after woocommerce_create_refund ran but before the refund was committed,
+	 * such as on a deadlock, a failed commit or an uncaught error. The refund may be gone while an extension
+	 * already refunded the payment, and a retry would not find it as a duplicate.
+	 *
+	 * @param int             $order_id Order ID.
+	 * @param mixed|\WP_Error $result   Result of the call.
+	 * @return \WP_Error
+	 */
+	private static function lost_after_hook_error( int $order_id, $result ): \WP_Error {
+		$reason = is_wp_error( $result ) ? $result->get_error_message() : '';
+		wc_get_logger()->error(
+			sprintf( 'A refund of order %1$d failed after woocommerce_create_refund ran: %2$s', $order_id, $reason ),
+			array( 'source' => 'woocommerce-refunds' )
+		);
+
+		return new \WP_Error(
+			'woocommerce_ability_order_refund_lost',
+			sprintf(
+				/* translators: %s: error message. */
+				__( 'The refund failed after extensions ran their refund callbacks, so it may not have been recorded, and an extension may already have refunded the payment: %s Do not refund again. Check with the merchant and the payment gateway whether the money was returned, and record the refund manually if it was.', 'woocommerce' ),
+				$reason
+			),
+			array(
+				'status'   => 500,
+				'order_id' => $order_id,
+			)
+		);
+	}
+
+	/**
 	 * Whether the call that created the refund asked for the payment to be refunded and the refund is not marked
 	 * as paid. A gateway refusal deletes the refund, so only a refund kept after a failed save matches.
 	 *
@@ -550,9 +627,9 @@ class OrderRefundCreate extends ActionableAbility {
 	 * Lock the refunds of an order with an option row, as WC_Install::create_lock() does, taking over a stale lock.
 	 *
 	 * @param int $order_id Order ID.
-	 * @return string|null The lock value to release it with, or null when another call holds the lock.
+	 * @return string|false|null The lock value to release it with, null when another call holds the lock, or false on a database error.
 	 */
-	private static function lock_order( int $order_id ): ?string {
+	private static function lock_order( int $order_id ) {
 		global $wpdb;
 
 		$name    = self::LOCK_OPTION_PREFIX . $order_id;
@@ -562,10 +639,13 @@ class OrderRefundCreate extends ActionableAbility {
 		$locked = $wpdb->query(
 			$wpdb->prepare( "INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %d, 'no')", $name, $expires )
 		);
-		if ( ! $locked ) {
+		if ( 0 === $locked ) {
 			$locked = $wpdb->query(
 				$wpdb->prepare( "UPDATE {$wpdb->options} SET option_value = %d WHERE option_name = %s AND option_value < %d", $expires, $name, time() )
 			);
+		}
+		if ( false === $locked ) {
+			return false;
 		}
 
 		return $locked ? (string) $expires : null;

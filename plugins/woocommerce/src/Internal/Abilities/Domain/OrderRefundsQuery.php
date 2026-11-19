@@ -82,6 +82,15 @@ class OrderRefundsQuery extends AbstractDomainAbility implements AbilityDefiniti
 		}
 
 		$refunds = $order->get_refunds();
+		usort(
+			$refunds,
+			static function ( \WC_Order_Refund $a, \WC_Order_Refund $b ): int {
+				$a_created = $a->get_date_created();
+				$b_created = $b->get_date_created();
+
+				return array( $b_created ? $b_created->getTimestamp() : 0, $b->get_id() ) <=> array( $a_created ? $a_created->getTimestamp() : 0, $a->get_id() );
+			}
+		);
 		if ( isset( $input['include'] ) ) {
 			$refunds = array_filter(
 				$refunds,
