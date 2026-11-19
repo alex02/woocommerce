@@ -140,11 +140,11 @@ export default function SalesReadinessOverview( {
 										? __(
 												'Nothing to fix right now. Your store has everything AI assistants need to find and shop your products.',
 												'woocommerce'
-										  )
+											)
 										: __(
 												'Nothing ranked to fix right now. View all checks for the full results.',
 												'woocommerce'
-										  ) }
+											) }
 								</Text>
 							) }
 							<div className="wc-sales-readiness-card__actions wc-sales-readiness-card__actions--link">

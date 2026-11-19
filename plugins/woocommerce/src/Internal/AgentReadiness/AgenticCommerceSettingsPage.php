@@ -265,7 +265,7 @@ class AgenticCommerceSettingsPage extends \WC_Settings_Page {
 	 * Save only the fields the AI shopping page posts, so a setting a filter adds to the section, which
 	 * the page doesn't show, keeps its value instead of being reset.
 	 */
-	protected function save_settings_for_current_section() {
+	protected function save_settings_for_current_section(): void {
 		global $current_section;
 
 		if ( AgenticCommerceSettings::SHOPPING_SECTION !== $current_section ) {
@@ -291,7 +291,7 @@ class AgenticCommerceSettingsPage extends \WC_Settings_Page {
 					'label' => (string) $label,
 				);
 			}
-			$value    = (string) get_option( $field['id'], '' );
+			$value    = (string) \WC_Admin_Settings::get_option( $field['id'], '' );
 			$fields[] = array(
 				'id'      => (string) $field['id'],
 				// The key WC_Admin_Settings::save_fields() reads the posted value from.

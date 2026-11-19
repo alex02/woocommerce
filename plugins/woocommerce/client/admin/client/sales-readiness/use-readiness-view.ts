@@ -122,7 +122,10 @@ export function useReadinessView(
 		} catch {
 			trackReadiness( 'error', { surface, action: 'run' } );
 			setError(
-				__( 'The check didn’t start. Try again in a few minutes.', 'woocommerce' )
+				__(
+					'The check didn’t start. Try again in a few minutes.',
+					'woocommerce'
+				)
 			);
 		} finally {
 			setRunning( false );
